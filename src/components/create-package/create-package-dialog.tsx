@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { talentCategories, type Role } from "@/lib/nav-items";
 import { mockRoster, mockRosterByCategory } from "@/lib/mock-roster";
+import { createPackage } from "@/lib/supabase/package-actions";
 
 type Step = "choose-talent" | "form" | "success";
 
@@ -29,11 +30,20 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<"in
   );
 }
 
-function SelectField({ label, options }: { label: string; options: string[] }) {
+function SelectField({
+  label,
+  name,
+  options,
+}: {
+  label: string;
+  name: string;
+  options: string[];
+}) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
   return (
     <select
       id={id}
+      name={name}
       aria-label={label}
       defaultValue=""
       className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -65,6 +75,8 @@ export function CreatePackageDialog({
   const [repeatOn, setRepeatOn] = useState(true);
   const [selectedDays, setSelectedDays] = useState<string[]>(["SAT", "SUN"]);
   const [paymentMethod, setPaymentMethod] = useState<"Prepaid" | "Postpaid">("Prepaid");
+  const [error, setError] = useState<string | undefined>();
+  const [pending, setPending] = useState(false);
 
   const selectedTalent = mockRoster.find((t) => t.id === selectedTalentId);
 
@@ -72,8 +84,29 @@ export function CreatePackageDialog({
     setSelectedDays((d) => (d.includes(day) ? d.filter((x) => x !== day) : [...d, day]));
   }
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    // Agency package creation isn't wired to real data yet (agency is out of
+    // scope for this pass) — keep its existing mock success behavior.
+    if (isAgency) {
+      setStep("success");
+      return;
+    }
+
+    setError(undefined);
+    setPending(true);
+    const formData = new FormData(e.currentTarget);
+    formData.set("repeatOn", String(repeatOn));
+    formData.set("repeatDays", selectedDays.join(","));
+    formData.set("paymentMethod", paymentMethod);
+
+    const result = await createPackage(formData);
+    setPending(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
     setStep("success");
   }
 
@@ -159,19 +192,19 @@ export function CreatePackageDialog({
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3">
-                <SelectField label="Category" options={talentCategories.map((c) => c.label)} />
-                <SelectField label="Sub-Category" options={["Rapper", "Ballad", "RnB", "Bolero"]} />
+                <SelectField label="Category" name="category" options={talentCategories.map((c) => c.label)} />
+                <SelectField label="Sub-Category" name="subCategory" options={["Rapper", "Ballad", "RnB", "Bolero"]} />
               </div>
 
-              <Field label="Title" required />
+              <Field label="Title" name="title" required />
 
               <div className="grid grid-cols-2 gap-3">
-                <SelectField label="Residency" options={["Resident", "Non-resident"]} />
-                <SelectField label="Location" options={["HCM City", "Hanoi", "Da Nang"]} />
+                <SelectField label="Residency" name="residency" options={["Resident", "Non-resident"]} />
+                <SelectField label="Location" name="location" options={["HCM City", "Hanoi", "Da Nang"]} />
               </div>
 
               {isAgency ? (
-                <SelectField label="One-time" options={["One-time", "Repeat"]} />
+                <SelectField label="One-time" name="oneTime" options={["One-time", "Repeat"]} />
               ) : (
                 <div className="flex flex-col gap-3 rounded-[8px] bg-white/5 p-3">
                   <div className="flex items-center justify-between">
@@ -203,23 +236,25 @@ export function CreatePackageDialog({
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Start Date" type="date" required />
-                <Field label="End Date" type="date" required />
+                <Field label="Start Date" name="startDate" type="date" required />
+                <Field label="End Date" name="endDate" type="date" required />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Start Time" type="time" required />
-                <Field label="End Time" type="time" required />
+                <Field label="Start Time" name="startTime" type="time" required />
+                <Field label="End Time" name="endTime" type="time" required />
               </div>
 
-              <Textarea placeholder="Description" rows={3} className="rounded-[6px]" />
+              <Textarea name="description" placeholder="Description" rows={3} className="rounded-[6px]" />
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
 
               <div className="flex flex-col gap-2">
                 <Label className="text-sm text-foreground">
                   Price Range<span className="text-primary">*</span>
                 </Label>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Price Min" type="number" required />
-                  <Field label="Price Max" type="number" required />
+                  <Field label="Price Min" name="priceMin" type="number" required />
+                  <Field label="Price Max" name="priceMax" type="number" required />
                 </div>
               </div>
 
@@ -254,8 +289,8 @@ export function CreatePackageDialog({
                 </div>
               </div>
 
-              <Button type="submit" className="h-11 w-full rounded-[6px]">
-                Create new Package
+              <Button type="submit" disabled={pending} className="h-11 w-full rounded-[6px]">
+                {pending ? "Creating..." : "Create new Package"}
               </Button>
               {isAgency && (
                 <Button

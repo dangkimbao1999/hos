@@ -3,6 +3,7 @@ import type { Role } from "@/lib/nav-items";
 export interface Profile {
   id: string;
   role: Role;
+  slug: string;
   full_name: string;
   avatar_url: string | null;
   bio: string | null;
@@ -82,4 +83,66 @@ export interface EventListingSummary {
 export interface EventWithSlots extends EventRow {
   slots: EventSlotRow[];
   organizer: Pick<Profile, "full_name" | "location">;
+}
+
+export type PaymentMethod = "Prepaid" | "Postpaid";
+export type PackageStatus = "active" | "closed";
+
+export interface PackageRow {
+  id: string;
+  talent_id: string;
+  category: string;
+  sub_category: string | null;
+  title: string;
+  residency: string | null;
+  location: string;
+  repeat_on: boolean;
+  repeat_days: string[] | null;
+  start_date: string;
+  end_date: string;
+  start_time: string;
+  end_time: string;
+  description: string | null;
+  price_min_vnd: number;
+  price_max_vnd: number;
+  payment_method: PaymentMethod;
+  status: PackageStatus;
+  created_at: string;
+}
+
+export interface CartItemRow {
+  id: string;
+  organizer_id: string;
+  package_id: string;
+  price_vnd: number;
+  booked_date: string | null;
+  booked_time: string | null;
+  created_at: string;
+}
+
+/** A cart item joined with its package + the talent who owns it — for the cart popover/checkout page. */
+export interface CartItemWithPackage extends CartItemRow {
+  package: Pick<PackageRow, "id" | "title" | "location">;
+  talent: Pick<Profile, "id" | "full_name">;
+}
+
+export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
+
+export interface PackageBookingRow {
+  id: string;
+  package_id: string;
+  organizer_id: string;
+  price_vnd: number;
+  booked_date: string | null;
+  booked_time: string | null;
+  payment_method: PaymentMethod;
+  status: BookingStatus;
+  created_at: string;
+}
+
+/** A booking joined with the counterpart's name — for each role's Orders page. */
+export interface BookingWithNames extends PackageBookingRow {
+  package_title: string;
+  organizer_name: string;
+  talent_name: string;
 }
