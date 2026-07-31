@@ -4,14 +4,10 @@ import { FilterPill } from "@/components/shell/filter-pill";
 import { HashtagFilter } from "@/components/shell/hashtag-filter";
 import { TimeRangeFilter } from "@/components/shell/time-range-filter";
 import { EventListingCard } from "@/components/shell/event-listing-card";
-import { mockUpcomingEvents, mockRecentEvents } from "@/lib/mock-event-listings";
-import { mockEventDetail } from "@/lib/mock-event-detail";
+import type { EventListingSummary } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
 
-export function EventDiscoverContent({ role }: { role: Role }) {
-  const results = [...mockUpcomingEvents, ...mockRecentEvents];
-  const eventHref = `/${role}/events/${mockEventDetail.slug}`;
-
+export function EventDiscoverContent({ role, listings }: { role: Role; listings: EventListingSummary[] }) {
   return (
     <div className="flex flex-col gap-6 py-8">
       <div className="flex flex-col gap-1">
@@ -28,8 +24,8 @@ export function EventDiscoverContent({ role }: { role: Role }) {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fill,289px)] gap-6 pt-4">
-        {results.map((item, i) => (
-          <EventListingCard key={`${item.id}-${i}`} data={item} href={eventHref} />
+        {listings.map((item) => (
+          <EventListingCard key={item.id} data={item} href={`/${role}/events/${item.slug}`} />
         ))}
       </div>
     </div>

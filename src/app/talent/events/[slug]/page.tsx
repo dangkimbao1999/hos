@@ -1,8 +1,15 @@
+import { notFound } from "next/navigation";
 import { EventDetailContent } from "@/components/event-detail/event-detail-content";
+import { getEventBySlug, listEventListings } from "@/lib/supabase/events";
 
-export default function TalentEventDetailPage() {
-  return (
-    <EventDetailContent role="talent" />
-  );
+export default async function TalentEventDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const [event, moreEvents] = await Promise.all([getEventBySlug(slug), listEventListings(4)]);
+  if (!event) notFound();
+
+  return <EventDetailContent role="talent" event={event} moreEvents={moreEvents} />;
 }
-

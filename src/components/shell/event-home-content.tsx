@@ -3,12 +3,13 @@ import { ImageIcon } from "lucide-react";
 import { CardCarousel } from "@/components/shell/card-carousel";
 import { EventListingCard, EventListingRow } from "@/components/shell/event-listing-card";
 import { PromoCard } from "@/components/shell/promo-card";
-import { mockRecentEvents, mockUpcomingEvents } from "@/lib/mock-event-listings";
-import { mockEventDetail } from "@/lib/mock-event-detail";
+import { listEventListings } from "@/lib/supabase/events";
 import type { Role } from "@/lib/nav-items";
 
-export function EventHomeContent({ role }: { role: Role }) {
-  const eventHref = `/${role}/events/${mockEventDetail.slug}`;
+export async function EventHomeContent({ role }: { role: Role }) {
+  const listings = await listEventListings(10);
+  const upcoming = listings.slice(0, 4);
+  const recent = listings.slice(4);
 
   return (
     <div className="flex flex-col gap-14 py-8">
@@ -17,8 +18,8 @@ export function EventHomeContent({ role }: { role: Role }) {
       </div>
 
       <CardCarousel title="Hot Up-Coming Events" viewAllHref={`/${role}/discover`}>
-        {mockUpcomingEvents.map((item) => (
-          <EventListingCard key={item.id} data={item} href={eventHref} />
+        {upcoming.map((item) => (
+          <EventListingCard key={item.id} data={item} href={`/${role}/events/${item.slug}`} />
         ))}
       </CardCarousel>
 
@@ -31,8 +32,8 @@ export function EventHomeContent({ role }: { role: Role }) {
             </Link>
           </div>
           <div className="flex flex-col gap-3">
-            {mockRecentEvents.map((item) => (
-              <EventListingRow key={item.id} data={item} href={eventHref} />
+            {recent.map((item) => (
+              <EventListingRow key={item.id} data={item} href={`/${role}/events/${item.slug}`} />
             ))}
           </div>
         </div>

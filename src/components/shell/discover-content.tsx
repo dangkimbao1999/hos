@@ -11,7 +11,6 @@ import { SearchResultCard } from "@/components/shell/listing-card";
 import { talentCategories, type Role } from "@/lib/nav-items";
 import { mockSearchResults } from "@/lib/mock-listings";
 import { mockTalentDetail } from "@/lib/mock-talent-detail";
-import { mockEventDetail } from "@/lib/mock-event-detail";
 
 const categoryLabels = talentCategories.map((c) => c.label);
 
@@ -50,15 +49,7 @@ export function DiscoverContent({ role }: { role: Role }) {
 
       <div className="grid grid-cols-[repeat(auto-fill,289px)] gap-6 pt-4">
         {mockSearchResults.map((item) => (
-          <SearchResultCard
-            key={item.id}
-            data={item}
-            href={
-              role === "organizer"
-                ? `/organizer/talents/${mockTalentDetail.slug}`
-                : `/${role}/events/${mockEventDetail.slug}`
-            }
-          />
+          <SearchResultCard key={item.id} data={item} href={`/organizer/talents/${mockTalentDetail.slug}`} />
         ))}
       </div>
     </div>
