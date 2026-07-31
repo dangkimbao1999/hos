@@ -18,14 +18,49 @@ import {
 import { cn } from "@/lib/utils";
 import { mockPackages } from "@/lib/mock-account";
 import type { Role } from "@/lib/nav-items";
+import type { PackageRow } from "@/lib/supabase/types";
 
 const statusStyles: Record<string, string> = {
   Active: "text-green-500",
   Closed: "text-destructive",
 };
 
-export function PackagesContent({ role }: { role: Role }) {
+function formatVnd(n: number) {
+  return `${n.toLocaleString("en-US")} VND`;
+}
+
+interface DisplayPackage {
+  id: string;
+  name: string;
+  bookingCount: number;
+  priceRange: string;
+  status: "Active" | "Closed";
+}
+
+export function PackagesContent({
+  role,
+  packages,
+}: {
+  role: Role;
+  packages?: (PackageRow & { bookingCount: number })[];
+}) {
   const [createOpen, setCreateOpen] = useState(false);
+
+  const rows: DisplayPackage[] = packages
+    ? packages.map((pkg) => ({
+        id: pkg.id,
+        name: pkg.title,
+        bookingCount: pkg.bookingCount,
+        priceRange: `${formatVnd(pkg.price_min_vnd)} - ${formatVnd(pkg.price_max_vnd)}`,
+        status: pkg.status === "active" ? "Active" : "Closed",
+      }))
+    : mockPackages.map((pkg) => ({
+        id: pkg.id,
+        name: pkg.name,
+        bookingCount: pkg.bookingCount,
+        priceRange: pkg.priceRange,
+        status: pkg.status,
+      }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -65,7 +100,7 @@ export function PackagesContent({ role }: { role: Role }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockPackages.map((pkg) => (
+            {rows.map((pkg) => (
               <TableRow key={pkg.id} className="hover:bg-transparent">
                 <TableCell className="font-medium text-foreground">{pkg.name}</TableCell>
                 <TableCell>{pkg.bookingCount} Booked</TableCell>

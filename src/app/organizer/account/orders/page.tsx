@@ -1,11 +1,15 @@
 import { AccountShell } from "@/components/account/account-shell";
 import { OrdersContent } from "@/components/account/orders-content";
+import { listBookingsForOrganizer } from "@/lib/supabase/packages";
+import { getCurrentProfile } from "@/lib/supabase/server";
 
-export default function OrganizerOrdersPage() {
+export default async function OrganizerOrdersPage() {
+  const profile = await getCurrentProfile();
+  const bookings = profile ? await listBookingsForOrganizer(profile.id) : [];
+
   return (
     <AccountShell role="organizer">
-      <OrdersContent />
+      <OrdersContent role="organizer" bookings={bookings} />
     </AccountShell>
   );
 }
-

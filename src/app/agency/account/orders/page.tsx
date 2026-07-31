@@ -4,7 +4,7 @@ import { OrdersContent } from "@/components/account/orders-content";
 export default function AgencyOrdersPage() {
   return (
     <AccountShell role="agency">
-      <OrdersContent />
+      <OrdersContent role="agency" />
     </AccountShell>
   );
 }

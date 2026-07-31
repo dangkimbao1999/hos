@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mockOrders } from "@/lib/mock-account";
+import type { BookingWithNames } from "@/lib/supabase/types";
+import type { Role } from "@/lib/nav-items";
 
 const statusStyles: Record<string, string> = {
   Pending: "bg-amber-500/10 text-amber-500",
@@ -14,8 +16,44 @@ const statusStyles: Record<string, string> = {
 
 const SUB_FILTERS = ["All", "Upcoming", "Pending", "Pending done", "Wait to confirm", "Done", "Canceled"];
 
-export function OrdersContent() {
+function formatVnd(n: number) {
+  return `${n.toLocaleString("en-US")} VND`;
+}
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+interface DisplayOrder {
+  id: string;
+  counterpartName: string;
+  packageName: string;
+  date: string;
+  price: string;
+  status: string;
+}
+
+export function OrdersContent({ role, bookings }: { role: Role; bookings?: BookingWithNames[] }) {
   const [activeFilter, setActiveFilter] = useState(SUB_FILTERS[0]);
+  const counterpartLabel = role === "organizer" ? "Talent" : "Organizer";
+
+  const orders: DisplayOrder[] = bookings
+    ? bookings.map((b) => ({
+        id: b.id.slice(0, 8).toUpperCase(),
+        counterpartName: role === "organizer" ? b.talent_name : b.organizer_name,
+        packageName: b.package_title,
+        date: b.booked_date ?? "Flexible",
+        price: formatVnd(b.price_vnd),
+        status: capitalize(b.status),
+      }))
+    : mockOrders.map((o) => ({
+        id: o.id,
+        counterpartName: o.talentName,
+        packageName: o.packageName,
+        date: o.date,
+        price: o.priceVnd,
+        status: o.status,
+      }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -50,30 +88,34 @@ export function OrdersContent() {
       <div className="flex flex-col overflow-hidden rounded-md bg-white/5">
         <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-4 border-b border-border px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
           <span>Order</span>
-          <span>Talent</span>
+          <span>{counterpartLabel}</span>
           <span>Date</span>
           <span>Price</span>
           <span>Status</span>
         </div>
-        {mockOrders.map((order) => (
-          <div
-            key={order.id}
-            className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-center gap-4 border-b border-border px-5 py-4 text-sm last:border-b-0"
-          >
-            <span className="text-muted-foreground">{order.id}</span>
-            <div className="flex flex-col">
-              <span className="font-medium text-foreground">{order.talentName}</span>
-              <span className="text-xs text-muted-foreground">{order.packageName}</span>
-            </div>
-            <span className="text-foreground">{order.date}</span>
-            <span className="font-semibold text-foreground">{order.priceVnd}</span>
-            <span
-              className={cn("w-fit rounded-full px-3 py-1 text-xs font-medium", statusStyles[order.status])}
+        {orders.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground">No orders yet.</p>
+        ) : (
+          orders.map((order) => (
+            <div
+              key={order.id}
+              className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-center gap-4 border-b border-border px-5 py-4 text-sm last:border-b-0"
             >
-              {order.status}
-            </span>
-          </div>
-        ))}
+              <span className="text-muted-foreground">{order.id}</span>
+              <div className="flex flex-col">
+                <span className="font-medium text-foreground">{order.counterpartName}</span>
+                <span className="text-xs text-muted-foreground">{order.packageName}</span>
+              </div>
+              <span className="text-foreground">{order.date}</span>
+              <span className="font-semibold text-foreground">{order.price}</span>
+              <span
+                className={cn("w-fit rounded-full px-3 py-1 text-xs font-medium", statusStyles[order.status])}
+              >
+                {order.status}
+              </span>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
