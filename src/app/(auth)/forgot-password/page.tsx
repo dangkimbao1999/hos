@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CircleCheck } from "lucide-react";
 import { AuthCard } from "@/components/auth/auth-card";
 import { FormField } from "@/components/auth/form-field";
 import { PasswordField } from "@/components/auth/password-field";
 import { Button } from "@/components/ui/button";
+import { requestPasswordReset, updatePassword } from "@/lib/supabase/actions";
 
-type Step = "request" | "reset" | "success";
+type Step = "request" | "check-email" | "reset" | "success";
 
 const BACK_TO_SIGN_IN = (
   <>
@@ -19,13 +21,25 @@ const BACK_TO_SIGN_IN = (
   </>
 );
 
-export default function ForgotPasswordPage() {
-  const [step, setStep] = useState<Step>("request");
+function ForgotPasswordForm() {
+  const searchParams = useSearchParams();
+  const initialStep: Step = searchParams.get("step") === "reset" ? "reset" : "request";
+  const [step, setStep] = useState<Step>(initialStep);
+  const [error, setError] = useState<string | undefined>();
+  const [pending, setPending] = useState(false);
 
   if (step === "request") {
-    function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
       e.preventDefault();
-      setStep("reset");
+      setError(undefined);
+      setPending(true);
+      const result = await requestPasswordReset(new FormData(e.currentTarget));
+      setPending(false);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      setStep("check-email");
     }
 
     return (
@@ -35,18 +49,44 @@ export default function ForgotPasswordPage() {
         footer={BACK_TO_SIGN_IN}
       >
         <form onSubmit={handleSubmit} className="flex w-full flex-col items-start gap-[22px]">
-          <FormField label="Enter your Email" type="email" placeholder="test@gmail.com" required />
-          <Button type="submit" className="h-[52px] w-full rounded-[6px] text-base font-semibold">
-            Reset Password
+          <FormField
+            label="Enter your Email"
+            name="email"
+            type="email"
+            placeholder="test@gmail.com"
+            error={error}
+            required
+          />
+          <Button type="submit" disabled={pending} className="h-[52px] w-full rounded-[6px] text-base font-semibold">
+            {pending ? "Sending..." : "Reset Password"}
           </Button>
         </form>
       </AuthCard>
     );
   }
 
+  if (step === "check-email") {
+    return (
+      <AuthCard
+        icon={<CircleCheck className="size-[46px] text-green-500" />}
+        title="Check your Email"
+        description="We sent a password reset link to your email. Follow it to set a new password."
+        footer={BACK_TO_SIGN_IN}
+      />
+    );
+  }
+
   if (step === "reset") {
-    function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
       e.preventDefault();
+      setError(undefined);
+      setPending(true);
+      const result = await updatePassword(new FormData(e.currentTarget));
+      setPending(false);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
       setStep("success");
     }
 
@@ -57,10 +97,17 @@ export default function ForgotPasswordPage() {
         footer={BACK_TO_SIGN_IN}
       >
         <form onSubmit={handleSubmit} className="flex w-full flex-col items-start gap-[22px]">
-          <PasswordField label="Password" placeholder="••••••••••" required />
-          <PasswordField label="Confirm Password" placeholder="••••••••••" required />
-          <Button type="submit" className="h-[52px] w-full rounded-[6px] text-base font-semibold">
-            Reset Password
+          <PasswordField label="Password" name="password" placeholder="••••••••••" minLength={6} required />
+          <PasswordField
+            label="Confirm Password"
+            name="confirmPassword"
+            placeholder="••••••••••"
+            minLength={6}
+            required
+            error={error}
+          />
+          <Button type="submit" disabled={pending} className="h-[52px] w-full rounded-[6px] text-base font-semibold">
+            {pending ? "Resetting..." : "Reset Password"}
           </Button>
         </form>
       </AuthCard>
@@ -77,5 +124,13 @@ export default function ForgotPasswordPage() {
         <Link href="/sign-in">Back to Sign in</Link>
       </Button>
     </AuthCard>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense>
+      <ForgotPasswordForm />
+    </Suspense>
   );
 }

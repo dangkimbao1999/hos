@@ -10,18 +10,20 @@ import { PasswordField } from "@/components/auth/password-field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { signIn } from "@/lib/supabase/actions";
 
 export default function SignInPage() {
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | undefined>();
+  const [pending, setPending] = useState(false);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (identifier.includes(" ")) {
-      setError("*username must not have spaces");
-      return;
-    }
     setError(undefined);
+    setPending(true);
+    const result = await signIn(new FormData(e.currentTarget));
+    setPending(false);
+    if (result?.error) setError(result.error);
   }
 
   return (
@@ -41,6 +43,8 @@ export default function SignInPage() {
         type="button"
         variant="secondary"
         className="h-[52px] w-full gap-2.5 rounded-[6px] text-base font-semibold"
+        disabled
+        title="Google sign-in isn't wired up yet"
       >
         <Image src="/icons/google.svg" alt="" width={24} height={24} />
         Sign in with Google
@@ -51,13 +55,15 @@ export default function SignInPage() {
       <form onSubmit={handleSubmit} className="flex w-full flex-col items-start gap-[22px]">
         <div className="flex w-full flex-col items-start gap-[18px]">
           <FormField
-            label="Email / username"
+            label="Email"
+            name="email"
+            type="email"
             placeholder="test@gmail.com"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            error={error}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
           />
-          <PasswordField label="Password" placeholder="••••••••••" />
+          <PasswordField label="Password" name="password" placeholder="••••••••••" required error={error} />
         </div>
 
         <div className="flex w-full items-center justify-between">
@@ -72,8 +78,8 @@ export default function SignInPage() {
           </Link>
         </div>
 
-        <Button type="submit" className="h-[52px] w-full rounded-[6px] text-base font-semibold">
-          Sign in
+        <Button type="submit" disabled={pending} className="h-[52px] w-full rounded-[6px] text-base font-semibold">
+          {pending ? "Signing in..." : "Sign in"}
         </Button>
       </form>
     </AuthCard>
