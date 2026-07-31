@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import type { Profile } from "@/lib/supabase/types";
+import type { CurrentUser } from "@/lib/supabase/types";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -29,8 +29,8 @@ export async function createClient() {
   );
 }
 
-/** Current signed-in user's profile row, or null if not signed in. */
-export async function getCurrentProfile(): Promise<Profile | null> {
+/** Current signed-in user's profile row (+ auth email), or null if not signed in. */
+export async function getCurrentProfile(): Promise<CurrentUser | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -42,6 +42,7 @@ export async function getCurrentProfile(): Promise<Profile | null> {
     .select("*")
     .eq("id", user.id)
     .single();
+  if (!profile) return null;
 
-  return profile as Profile | null;
+  return { ...profile, email: user.email ?? "" } as CurrentUser;
 }
