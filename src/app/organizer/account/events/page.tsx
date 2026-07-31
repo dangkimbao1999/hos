@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 import { AccountShell } from "@/components/account/account-shell";
+import { EventApplicationsPanel } from "@/components/account/event-applications-panel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatEventDay } from "@/lib/format";
-import { listOrganizerEvents } from "@/lib/supabase/events";
+import { listApplicationsForOrganizer, listOrganizerEvents } from "@/lib/supabase/events";
 import { getCurrentProfile } from "@/lib/supabase/server";
 import type { EventStatus } from "@/lib/supabase/types";
 
@@ -29,7 +30,9 @@ function formatBudget(minVnd: number | null, maxVnd: number | null) {
 
 export default async function OrganizerEventsPage() {
   const profile = await getCurrentProfile();
-  const events = profile ? await listOrganizerEvents(profile.id) : [];
+  const [events, applications] = profile
+    ? await Promise.all([listOrganizerEvents(profile.id), listApplicationsForOrganizer(profile.id)])
+    : [[], []];
 
   return (
     <AccountShell role="organizer">
@@ -44,33 +47,39 @@ export default async function OrganizerEventsPage() {
         {events.map((event) => (
           <div
             key={event.id}
-            className="flex flex-wrap items-center justify-between gap-4 rounded-md bg-white/5 p-5"
+            className="flex flex-col gap-3 rounded-md bg-white/5 p-5"
           >
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-base font-semibold text-foreground">{event.name}</span>
-                <span className={cn("rounded-full px-3 py-1 text-xs font-medium", statusStyles[event.status])}>
-                  {statusLabels[event.status]}
-                </span>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-semibold text-foreground">{event.name}</span>
+                  <span className={cn("rounded-full px-3 py-1 text-xs font-medium", statusStyles[event.status])}>
+                    {statusLabels[event.status]}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <CalendarDays className="size-3.5" />
+                    {formatEventDay(event.event_date)}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="size-3.5" />
+                    {event.venue}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Users className="size-3.5" />
+                    {event.filled_slots} {event.filled_slots === 1 ? "talent" : "talents"} booked
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <CalendarDays className="size-3.5" />
-                  {formatEventDay(event.event_date)}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="size-3.5" />
-                  {event.venue}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Users className="size-3.5" />
-                  {event.filled_slots} {event.filled_slots === 1 ? "talent" : "talents"} booked
-                </span>
-              </div>
+              <span className="text-sm font-semibold text-foreground">
+                {formatBudget(event.budget_min_vnd, event.budget_max_vnd)}
+              </span>
             </div>
-            <span className="text-sm font-semibold text-foreground">
-              {formatBudget(event.budget_min_vnd, event.budget_max_vnd)}
-            </span>
+
+            <EventApplicationsPanel
+              applications={applications.filter((a) => a.event_id === event.id)}
+            />
           </div>
         ))}
       </div>

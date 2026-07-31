@@ -4,7 +4,7 @@ import { BillingContent } from "@/components/account/billing-content";
 export default function AgencyBillingPage() {
   return (
     <AccountShell role="agency">
-      <BillingContent />
+      <BillingContent role="agency" />
     </AccountShell>
   );
 }

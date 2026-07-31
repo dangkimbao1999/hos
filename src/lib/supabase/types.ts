@@ -85,6 +85,15 @@ export interface EventWithSlots extends EventRow {
   organizer: Pick<Profile, "full_name" | "location">;
 }
 
+/** An application joined with its slot/event/applicant info — for the organizer's review UI. */
+export interface EventApplicationWithDetails extends EventApplicationRow {
+  slot_category: string;
+  slot_price_usd: number;
+  event_id: string;
+  event_name: string;
+  applicant_name: string;
+}
+
 export type PaymentMethod = "Prepaid" | "Postpaid";
 export type PackageStatus = "active" | "closed";
 
