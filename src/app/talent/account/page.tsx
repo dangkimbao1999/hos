@@ -1,13 +1,13 @@
-import { AppShell } from "@/components/shell/app-shell";
 import { AccountShell } from "@/components/account/account-shell";
 import { ProfileContent } from "@/components/account/profile-content";
+import { getCurrentProfile } from "@/lib/supabase/server";
 
-export default function TalentProfilePage() {
+export default async function TalentProfilePage() {
+  const profile = await getCurrentProfile();
+
   return (
-    <AppShell role="talent">
-      <AccountShell role="talent">
-        <ProfileContent role="talent" />
-      </AccountShell>
-    </AppShell>
+    <AccountShell role="talent">
+      <ProfileContent role="talent" profile={profile!} />
+    </AccountShell>
   );
 }

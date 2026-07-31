@@ -1,13 +1,13 @@
-import { AppShell } from "@/components/shell/app-shell";
 import { AccountShell } from "@/components/account/account-shell";
 import { ProfileContent } from "@/components/account/profile-content";
+import { getCurrentProfile } from "@/lib/supabase/server";
 
-export default function OrganizerProfilePage() {
+export default async function OrganizerProfilePage() {
+  const profile = await getCurrentProfile();
+
   return (
-    <AppShell role="organizer">
-      <AccountShell role="organizer">
-        <ProfileContent role="organizer" />
-      </AccountShell>
-    </AppShell>
+    <AccountShell role="organizer">
+      <ProfileContent role="organizer" profile={profile!} />
+    </AccountShell>
   );
 }

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { talentCategories, type Role } from "@/lib/nav-items";
+import type { CurrentUser } from "@/lib/supabase/types";
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
@@ -21,23 +22,7 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<"in
   );
 }
 
-const roleConfig: Record<Role, { name: string; bio: string }> = {
-  organizer: {
-    name: "Dang Kim Bao",
-    bio: "Event organizer booking live talent for festivals, clubs, and private events across Ho Chi Minh City.",
-  },
-  talent: {
-    name: "A$AP Rocky",
-    bio: "Performer available for festivals, clubs, and private bookings across Ho Chi Minh City.",
-  },
-  agency: {
-    name: "420 Ent.",
-    bio: "Talent agency representing a roster of performers for festivals, clubs, and private events.",
-  },
-};
-
-export function ProfileContent({ role }: { role: Role }) {
-  const config = roleConfig[role];
+export function ProfileContent({ role, profile }: { role: Role; profile: CurrentUser }) {
   const [keywords, setKeywords] = useState(["#A$APMob", "#Flacko", "#A$APRocky", "#PraiseTheLord", "#Rihanna"]);
 
   return (
@@ -61,11 +46,16 @@ export function ProfileContent({ role }: { role: Role }) {
           <ImageIcon className="size-8" />
         </div>
         <div className="flex items-center gap-4 px-6 pb-6">
-          <div className="-mt-8 flex size-16 shrink-0 items-center justify-center rounded-full border-4 border-card bg-white/10 text-muted-foreground">
-            <User className="size-6" />
+          <div className="-mt-8 flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-card bg-white/10 text-muted-foreground">
+            {profile.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.avatar_url} alt="" className="size-full object-cover" />
+            ) : (
+              <User className="size-6" />
+            )}
           </div>
           <div className="flex flex-col pt-2">
-            <span className="text-lg font-bold text-foreground">{config.name}</span>
+            <span className="text-lg font-bold text-foreground">{profile.full_name || "Your Account"}</span>
             <span className="text-sm text-muted-foreground">
               Manage your profile information, password and more
             </span>
@@ -76,11 +66,11 @@ export function ProfileContent({ role }: { role: Role }) {
       <div className="flex flex-col gap-5 rounded-md bg-white/5 p-6">
         <h2 className="text-lg font-semibold text-foreground">Basic Information</h2>
         <div className="grid grid-cols-2 gap-5">
-          <Field label="Display Name" defaultValue={config.name} />
-          <Field label="Email" type="email" defaultValue="dangkimbao1999@gmail.com" />
+          <Field label="Display Name" defaultValue={profile.full_name} />
+          <Field label="Email" type="email" defaultValue={profile.email} disabled />
           <Field label="Phone number" type="tel" defaultValue="+84 90 123 4567" />
           <Field label="District" defaultValue="District 1" />
-          <Field label="City/Province" defaultValue="Ho Chi Minh City" />
+          <Field label="City/Province" defaultValue={profile.location ?? ""} />
           {role === "talent" && (
             <>
               <div className="flex flex-col gap-2">
@@ -118,7 +108,7 @@ export function ProfileContent({ role }: { role: Role }) {
         <h2 className="text-lg font-semibold text-foreground">Bio</h2>
         <div className="flex flex-col gap-2">
           <Label className="text-sm text-muted-foreground">Description</Label>
-          <Textarea rows={3} className="rounded-[6px]" defaultValue={config.bio} />
+          <Textarea rows={3} className="rounded-[6px]" defaultValue={profile.bio ?? ""} />
         </div>
         <div className="flex flex-col gap-2">
           <Label className="text-sm text-muted-foreground">Thumbnail Image</Label>

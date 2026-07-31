@@ -9,3 +9,8 @@ export interface Profile {
   location: string | null;
   created_at: string;
 }
+
+/** Profile row plus the auth email, which lives on auth.users, not profiles. */
+export interface CurrentUser extends Profile {
+  email: string;
+}
