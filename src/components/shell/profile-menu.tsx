@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { signOut } from "@/lib/supabase/actions";
 import type { Role } from "@/lib/nav-items";
 
 export function ProfileMenu({ name, role }: { name: string; role: Role }) {
@@ -42,10 +43,8 @@ export function ProfileMenu({ name, role }: { name: string; role: Role }) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild variant="destructive">
-          <Link href="/sign-in">
-            <LogOut /> Log out
-          </Link>
+        <DropdownMenuItem variant="destructive" onClick={() => signOut()}>
+          <LogOut /> Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

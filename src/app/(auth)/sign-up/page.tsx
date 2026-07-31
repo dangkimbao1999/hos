@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Briefcase, CircleCheck, User } from "lucide-react";
+import { Briefcase, CircleCheck, Speaker, User } from "lucide-react";
 import { AuthCard } from "@/components/auth/auth-card";
 import { FormField } from "@/components/auth/form-field";
 import { PasswordField } from "@/components/auth/password-field";
@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { resendSignUpEmail, signUp } from "@/lib/supabase/actions";
+import type { Role } from "@/lib/nav-items";
 
-type AccountType = "organizer" | "talent";
 type Step = "account-type" | "details" | "success";
 
 const SIGN_IN_FOOTER = (
@@ -25,16 +26,19 @@ const SIGN_IN_FOOTER = (
 
 export default function SignUpPage() {
   const [step, setStep] = useState<Step>("account-type");
-  const [accountType, setAccountType] = useState<AccountType>("organizer");
+  const [accountType, setAccountType] = useState<Role>("organizer");
   const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | undefined>();
+  const [pending, setPending] = useState(false);
+  const [resent, setResent] = useState(false);
 
   if (step === "account-type") {
     return (
       <AuthCard
         title="Choose Account Type"
-        description="We have 2 type of account"
+        description="We have 3 types of account"
         footer={SIGN_IN_FOOTER}
-        className="max-w-[600px]"
+        className="max-w-[720px]"
       >
         <div className="flex w-full gap-5">
           <AccountTypeOption
@@ -51,6 +55,13 @@ export default function SignUpPage() {
             selected={accountType === "talent"}
             onClick={() => setAccountType("talent")}
           />
+          <AccountTypeOption
+            icon={<Speaker className="size-[22px]" />}
+            title="Agency Account"
+            description="Create agency account to manage talents and apply events"
+            selected={accountType === "agency"}
+            onClick={() => setAccountType("agency")}
+          />
         </div>
         <Button
           type="button"
@@ -64,8 +75,18 @@ export default function SignUpPage() {
   }
 
   if (step === "details") {
-    function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
       e.preventDefault();
+      setError(undefined);
+      setPending(true);
+      const formData = new FormData(e.currentTarget);
+      formData.set("role", accountType);
+      const result = await signUp(formData);
+      setPending(false);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
       setStep("success");
     }
 
@@ -77,16 +98,24 @@ export default function SignUpPage() {
       >
         <form onSubmit={handleSubmit} className="flex w-full flex-col items-start gap-[22px]">
           <div className="flex w-full flex-col items-start gap-[18px]">
-            <FormField label="Name" placeholder="Organizer Test" required />
+            <FormField label="Name" name="fullName" placeholder="Organizer Test" required />
             <FormField
               label="Email"
+              name="email"
               type="email"
               placeholder="test@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <PasswordField label="Password" placeholder="••••••••••" required />
+            <PasswordField
+              label="Password"
+              name="password"
+              placeholder="••••••••••"
+              minLength={6}
+              required
+              error={error}
+            />
           </div>
           <div className="flex items-center gap-2">
             <Checkbox id="agree-terms" defaultChecked required />
@@ -95,8 +124,8 @@ export default function SignUpPage() {
               <span className="text-primary underline">Term and Condition</span>
             </Label>
           </div>
-          <Button type="submit" className="h-[52px] w-full rounded-[6px] text-base font-semibold">
-            Sign up
+          <Button type="submit" disabled={pending} className="h-[52px] w-full rounded-[6px] text-base font-semibold">
+            {pending ? "Signing up..." : "Sign up"}
           </Button>
         </form>
       </AuthCard>
@@ -117,17 +146,21 @@ export default function SignUpPage() {
         </>
       }
     >
-      <Button
-        type="button"
-        onClick={() => setStep("account-type")}
-        className="h-[52px] w-full rounded-[6px] text-base font-semibold"
-      >
-        Already did that
+      <Button asChild className="h-[52px] w-full rounded-[6px] text-base font-semibold">
+        <Link href="/sign-in">Already did that</Link>
       </Button>
       <p className="text-center text-sm">
         <span className="text-muted-foreground">Didn&apos;t receive an email? </span>
-        <button type="button" className="text-primary underline">
-          Resend
+        <button
+          type="button"
+          className="text-primary underline disabled:opacity-50"
+          disabled={resent}
+          onClick={async () => {
+            const result = await resendSignUpEmail(email);
+            if (!("error" in result)) setResent(true);
+          }}
+        >
+          {resent ? "Sent!" : "Resend"}
         </button>
       </p>
     </AuthCard>

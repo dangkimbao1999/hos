@@ -5,7 +5,7 @@ interface AuthCardProps {
   icon?: ReactNode;
   title: string;
   description?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   footer?: ReactNode;
   className?: string;
 }
