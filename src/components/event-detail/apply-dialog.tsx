@@ -13,7 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import type { EventDetail, EventSlot } from "@/lib/mock-event-detail";
+import { formatEventDay, formatTimeRange } from "@/lib/format";
+import { applyToSlot } from "@/lib/supabase/event-actions";
+import type { EventSlotRow, EventWithSlots } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
 import { mockRoster, mockRosterByCategory } from "@/lib/mock-roster";
 
@@ -26,8 +28,8 @@ export function ApplyDialog({
   open,
   onOpenChange,
 }: {
-  event: EventDetail;
-  slot: EventSlot;
+  event: EventWithSlots;
+  slot: EventSlotRow;
   role: Role;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -35,8 +37,26 @@ export function ApplyDialog({
   const isAgency = role === "agency";
   const [step, setStep] = useState<Step>(isAgency ? "choose-talent" : "confirm");
   const [selectedTalentId, setSelectedTalentId] = useState(mockRoster[0]?.id ?? "");
+  const [offerAmount, setOfferAmount] = useState("");
+  const [error, setError] = useState<string | undefined>();
+  const [pending, setPending] = useState(false);
 
   const selectedTalent = mockRoster.find((t) => t.id === selectedTalentId);
+
+  async function handleApply() {
+    setError(undefined);
+    setPending(true);
+    const formData = new FormData();
+    formData.set("slotId", slot.id);
+    if (offerAmount) formData.set("offerAmountUsd", offerAmount);
+    const result = await applyToSlot(formData);
+    setPending(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    setStep("success");
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -98,8 +118,8 @@ export function ApplyDialog({
           <>
             <DialogHeader>
               <div className="flex items-center justify-between pr-6">
-                <DialogTitle>{slot.role}</DialogTitle>
-                <span className="text-lg font-bold text-foreground">${slot.priceUsd}</span>
+                <DialogTitle>{slot.category}</DialogTitle>
+                <span className="text-lg font-bold text-foreground">${slot.price_usd}</span>
               </div>
             </DialogHeader>
 
@@ -118,40 +138,58 @@ export function ApplyDialog({
             <div className="grid grid-cols-2 gap-3 rounded-[8px] bg-white/5 p-3 text-sm">
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground uppercase">Date</span>
-                <span className="font-medium text-foreground">{event.day}</span>
+                <span className="font-medium text-foreground">{formatEventDay(event.event_date)}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground uppercase">Time</span>
-                <span className="font-medium text-foreground">{event.time}</span>
+                <span className="font-medium text-foreground">
+                  {formatTimeRange(event.start_time, event.end_time)}
+                </span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground uppercase">Available Slot</span>
-                <span className="font-medium text-foreground">{slot.slots} Slots</span>
+                <span className="font-medium text-foreground">{slot.quantity_total} Slots</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground uppercase">Working Type</span>
-                <span className="font-medium text-foreground">{slot.type}</span>
+                <span className="font-medium text-foreground">{slot.slot_type}</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-2 rounded-[8px] bg-white/5 p-3 text-sm">
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground uppercase">Location</span>
-                <span className="font-medium text-foreground">{event.organizer.location}</span>
+                <span className="font-medium text-foreground">
+                  {event.organizer.location || event.address}
+                </span>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground uppercase">Contact Info</span>
-                <span className="font-medium text-foreground">{event.organizer.contact}</span>
-              </div>
+              {event.contact_phone && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground uppercase">Contact Info</span>
+                  <span className="font-medium text-foreground">{event.contact_phone}</span>
+                </div>
+              )}
             </div>
 
-            <p className="rounded-[8px] bg-white/5 p-3 text-xs text-muted-foreground">{event.bio}</p>
+            {event.description && (
+              <p className="rounded-[8px] bg-white/5 p-3 text-xs text-muted-foreground">
+                {event.description}
+              </p>
+            )}
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="offer" className="text-sm text-muted-foreground">
                 Your Offer (Optional)
               </Label>
-              <Input id="offer" placeholder="e.g. $2200" className="h-11 rounded-[6px]" />
+              <Input
+                id="offer"
+                placeholder="e.g. 2200"
+                type="number"
+                value={offerAmount}
+                onChange={(e) => setOfferAmount(e.target.value)}
+                className="h-11 rounded-[6px]"
+              />
+              {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
 
             <div className="flex gap-3">
@@ -164,8 +202,8 @@ export function ApplyDialog({
                   Back
                 </Button>
               )}
-              <Button className="h-11 flex-1 rounded-[6px]" onClick={() => setStep("success")}>
-                Apply
+              <Button disabled={pending} className="h-11 flex-1 rounded-[6px]" onClick={handleApply}>
+                {pending ? "Applying..." : "Apply"}
               </Button>
             </div>
           </>

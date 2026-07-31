@@ -6,16 +6,23 @@ import { ApplyPanel } from "@/components/event-detail/apply-panel";
 import { CardCarousel } from "@/components/shell/card-carousel";
 import { EventListingCard } from "@/components/shell/event-listing-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { mockEventDetail } from "@/lib/mock-event-detail";
-import { mockUpcomingEvents } from "@/lib/mock-event-listings";
+import { formatEventDay, formatTimeRange } from "@/lib/format";
+import type { EventListingSummary, EventWithSlots } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
 
 const TABS = ["Overview", "About Organizer"] as const;
 type Tab = (typeof TABS)[number];
 
-export function EventDetailContent({ role }: { role: Role }) {
+export function EventDetailContent({
+  role,
+  event,
+  moreEvents,
+}: {
+  role: Role;
+  event: EventWithSlots;
+  moreEvents: EventListingSummary[];
+}) {
   const [tab, setTab] = useState<Tab>("Overview");
-  const event = mockEventDetail;
 
   return (
     <div className="flex flex-col gap-6 py-8">
@@ -31,10 +38,10 @@ export function EventDetailContent({ role }: { role: Role }) {
           </span>
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white">
-              DAY <span className="font-semibold">{event.day}</span>
+              DAY <span className="font-semibold">{formatEventDay(event.event_date)}</span>
             </span>
             <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-medium text-white">
-              TIME <span className="font-semibold">{event.time}</span>
+              TIME <span className="font-semibold">{formatTimeRange(event.start_time, event.end_time)}</span>
             </span>
           </div>
         </div>
@@ -58,7 +65,9 @@ export function EventDetailContent({ role }: { role: Role }) {
         <div className="flex min-w-0 flex-1 flex-col gap-8">
           {tab === "Overview" && (
             <>
-              <h2 className="text-2xl font-bold tracking-[-0.03em] text-foreground">{event.tagline}</h2>
+              {event.tagline && (
+                <h2 className="text-2xl font-bold tracking-[-0.03em] text-foreground">{event.tagline}</h2>
+              )}
 
               <div className="flex flex-col gap-3">
                 <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-md bg-white/10 text-muted-foreground">
@@ -76,11 +85,13 @@ export function EventDetailContent({ role }: { role: Role }) {
                 </div>
               </div>
 
-              <p className="text-sm leading-relaxed text-muted-foreground">{event.bio}</p>
+              {event.description && (
+                <p className="text-sm leading-relaxed text-muted-foreground">{event.description}</p>
+              )}
 
               <CardCarousel title="More Upcoming Events" viewAllHref={`/${role}/discover`}>
-                {mockUpcomingEvents.map((item) => (
-                  <EventListingCard key={item.id} data={item} />
+                {moreEvents.map((item) => (
+                  <EventListingCard key={item.id} data={item} href={`/${role}/events/${item.slug}`} />
                 ))}
               </CardCarousel>
             </>
@@ -89,16 +100,22 @@ export function EventDetailContent({ role }: { role: Role }) {
           {tab === "About Organizer" && (
             <div className="flex flex-col gap-4">
               <h2 className="text-xl font-bold tracking-[-0.03em] text-foreground">
-                {event.organizer.name}
+                {event.organizer.full_name || "Organizer"}
               </h2>
               <div className="flex flex-col gap-3 rounded-md bg-white/5 p-5">
-                <div className="flex items-center gap-3 text-sm text-foreground">
-                  <MapPin className="size-4 shrink-0 text-muted-foreground" />
-                  {event.organizer.location}
-                </div>
-                <div className="text-sm text-muted-foreground">Contact: {event.organizer.contact}</div>
+                {event.organizer.location && (
+                  <div className="flex items-center gap-3 text-sm text-foreground">
+                    <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                    {event.organizer.location}
+                  </div>
+                )}
+                {event.contact_phone && (
+                  <div className="text-sm text-muted-foreground">Contact: {event.contact_phone}</div>
+                )}
               </div>
-              <p className="text-sm leading-relaxed text-muted-foreground">{event.bio}</p>
+              {event.description && (
+                <p className="text-sm leading-relaxed text-muted-foreground">{event.description}</p>
+              )}
             </div>
           )}
         </div>

@@ -9,9 +9,40 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { talentCategories } from "@/lib/nav-items";
+import { createEvent } from "@/lib/supabase/event-actions";
 
 const STEPS = ["Event Details", "Add Photos", "Review & Budget"] as const;
 type Step = (typeof STEPS)[number];
+
+interface FormValues {
+  eventName: string;
+  category: string;
+  date: string;
+  time: string;
+  venue: string;
+  description: string;
+  budgetMin: string;
+  budgetMax: string;
+  priceUsd: string;
+  quantity: string;
+  guests: string;
+  requirements: string;
+}
+
+const INITIAL_VALUES: FormValues = {
+  eventName: "",
+  category: "",
+  date: "",
+  time: "",
+  venue: "",
+  description: "",
+  budgetMin: "",
+  budgetMax: "",
+  priceUsd: "",
+  quantity: "1",
+  guests: "",
+  requirements: "",
+};
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
@@ -28,10 +59,17 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<"in
 export default function CreateEventPage() {
   const [stepIndex, setStepIndex] = useState(0);
   const [done, setDone] = useState(false);
-  const [eventName, setEventName] = useState("");
+  const [values, setValues] = useState<FormValues>(INITIAL_VALUES);
   const [photos, setPhotos] = useState<number[]>([]);
+  const [error, setError] = useState<string | undefined>();
+  const [pending, setPending] = useState(false);
 
   const step: Step = STEPS[stepIndex];
+
+  function set<K extends keyof FormValues>(key: K) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setValues((v) => ({ ...v, [key]: e.target.value }));
+  }
 
   function next() {
     setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
@@ -40,8 +78,31 @@ export default function CreateEventPage() {
     setStepIndex((i) => Math.max(i - 1, 0));
   }
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError(undefined);
+    setPending(true);
+
+    const formData = new FormData();
+    formData.set("eventName", values.eventName);
+    formData.set("category", values.category);
+    formData.set("date", values.date);
+    formData.set("time", values.time);
+    formData.set("venue", values.venue);
+    formData.set("description", values.description);
+    formData.set("budgetMin", values.budgetMin);
+    formData.set("budgetMax", values.budgetMax);
+    formData.set("priceUsd", values.priceUsd);
+    formData.set("quantity", values.quantity);
+    formData.set("guests", values.guests);
+    formData.set("requirements", values.requirements);
+
+    const result = await createEvent(formData);
+    setPending(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
     setDone(true);
   }
 
@@ -62,7 +123,7 @@ export default function CreateEventPage() {
               Event Created!
             </h1>
             <p className="text-sm text-muted-foreground">
-              {eventName || "Your event"} is now live. You can start browsing talent to book.
+              {values.eventName || "Your event"} is now live. You can start browsing talent to book.
             </p>
           </div>
           <div className="flex w-full flex-col gap-3">
@@ -118,8 +179,8 @@ export default function CreateEventPage() {
             <Field
               label="Event Name"
               placeholder="Summer Music Festival"
-              value={eventName}
-              onChange={(e) => setEventName(e.target.value)}
+              value={values.eventName}
+              onChange={set("eventName")}
               required
             />
             <div className="flex flex-col gap-2">
@@ -129,8 +190,9 @@ export default function CreateEventPage() {
               <select
                 id="category"
                 required
+                value={values.category}
+                onChange={set("category")}
                 className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                defaultValue=""
               >
                 <option value="" disabled>
                   Select talent category
@@ -143,10 +205,16 @@ export default function CreateEventPage() {
               </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Date" type="date" required />
-              <Field label="Time" type="time" required />
+              <Field label="Date" type="date" value={values.date} onChange={set("date")} required />
+              <Field label="Time" type="time" value={values.time} onChange={set("time")} required />
             </div>
-            <Field label="Venue / Address" placeholder="ABC Dance Zone, HCMC" required />
+            <Field
+              label="Venue / Address"
+              placeholder="ABC Dance Zone, HCMC"
+              value={values.venue}
+              onChange={set("venue")}
+              required
+            />
             <div className="flex flex-col gap-2">
               <Label htmlFor="description" className="text-sm text-muted-foreground">
                 Description
@@ -156,6 +224,8 @@ export default function CreateEventPage() {
                 rows={4}
                 className="rounded-[6px]"
                 placeholder="Tell talents what to expect from your event"
+                value={values.description}
+                onChange={set("description")}
               />
             </div>
             <Button type="submit" className="h-11 w-full rounded-[6px]">
@@ -217,10 +287,49 @@ export default function CreateEventPage() {
         {step === "Review & Budget" && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Budget Min (VND)" type="number" placeholder="10,000,000" required />
-              <Field label="Budget Max (VND)" type="number" placeholder="50,000,000" required />
+              <Field
+                label="Budget Min (VND)"
+                type="number"
+                placeholder="10,000,000"
+                value={values.budgetMin}
+                onChange={set("budgetMin")}
+                required
+              />
+              <Field
+                label="Budget Max (VND)"
+                type="number"
+                placeholder="50,000,000"
+                value={values.budgetMax}
+                onChange={set("budgetMax")}
+                required
+              />
             </div>
-            <Field label="Expected Guests" type="number" placeholder="200" />
+            <div className="grid grid-cols-2 gap-4">
+              <Field
+                label="Price per Talent (USD)"
+                type="number"
+                placeholder="2000"
+                value={values.priceUsd}
+                onChange={set("priceUsd")}
+                required
+              />
+              <Field
+                label="Talents Needed"
+                type="number"
+                min={1}
+                placeholder="3"
+                value={values.quantity}
+                onChange={set("quantity")}
+                required
+              />
+            </div>
+            <Field
+              label="Expected Guests"
+              type="number"
+              placeholder="200"
+              value={values.guests}
+              onChange={set("guests")}
+            />
             <div className="flex flex-col gap-2">
               <Label htmlFor="requirements" className="text-sm text-muted-foreground">
                 Special Requirements
@@ -230,13 +339,15 @@ export default function CreateEventPage() {
                 rows={3}
                 className="rounded-[6px]"
                 placeholder="Sound system provided, parking available, etc."
+                value={values.requirements}
+                onChange={set("requirements")}
               />
             </div>
 
             <div className="flex flex-col gap-1 rounded-[8px] bg-white/5 p-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Event</span>
-                <span className="font-medium text-foreground">{eventName || "Untitled Event"}</span>
+                <span className="font-medium text-foreground">{values.eventName || "Untitled Event"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Photos</span>
@@ -244,12 +355,14 @@ export default function CreateEventPage() {
               </div>
             </div>
 
+            {error && <p className="text-sm text-destructive">{error}</p>}
+
             <div className="flex gap-3">
               <Button type="button" variant="secondary" onClick={back} className="h-11 flex-1 rounded-[6px]">
                 Back
               </Button>
-              <Button type="submit" className="h-11 flex-1 rounded-[6px]">
-                Create Event
+              <Button type="submit" disabled={pending} className="h-11 flex-1 rounded-[6px]">
+                {pending ? "Creating..." : "Create Event"}
               </Button>
             </div>
           </form>
@@ -258,4 +371,3 @@ export default function CreateEventPage() {
     </div>
   );
 }
-

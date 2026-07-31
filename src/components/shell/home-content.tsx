@@ -4,7 +4,6 @@ import { ListingCard, ListingRow } from "@/components/shell/listing-card";
 import { PromoCard } from "@/components/shell/promo-card";
 import { mockFeaturedListings, mockRecentListings } from "@/lib/mock-listings";
 import { mockTalentDetail } from "@/lib/mock-talent-detail";
-import { mockEventDetail } from "@/lib/mock-event-detail";
 import type { Role } from "@/lib/nav-items";
 
 const copy: Record<Role, { featuredTitle: string; promoTitle: string; promoCta: string; promoHref: string }> = {
@@ -30,10 +29,9 @@ const copy: Record<Role, { featuredTitle: string; promoTitle: string; promoCta: 
 
 export function HomeContent({ role }: { role: Role }) {
   const { featuredTitle, promoTitle, promoCta, promoHref } = copy[role];
-  const detailHref =
-    role === "organizer"
-      ? `/organizer/talents/${mockTalentDetail.slug}`
-      : `/${role}/events/${mockEventDetail.slug}`;
+  // HomeContent is only ever rendered for role="organizer" — talent/agency use
+  // EventHomeContent instead, which is wired to real event data.
+  const detailHref = `/organizer/talents/${mockTalentDetail.slug}`;
 
   return (
     <div className="flex flex-col gap-14 py-8">

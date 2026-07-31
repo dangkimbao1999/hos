@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { ArrowRight, ImageIcon } from "lucide-react";
-import type { EventListingData } from "@/lib/mock-event-listings";
+import { formatEventDay, formatTimeRange } from "@/lib/format";
+import type { EventListingSummary } from "@/lib/supabase/types";
 
-function JobsBadge({ data }: { data: EventListingData }) {
+function JobsBadge({ data }: { data: EventListingSummary }) {
   return (
     <span className="rounded-full bg-black/50 px-2.5 py-1.5 text-xs font-medium text-white">
-      {String(data.jobsOffered).padStart(2, "0")}/{data.jobsTotal} Jobs Offered
+      {String(data.filled_slots).padStart(2, "0")}/{data.total_slots} Jobs Offered
     </span>
   );
 }
 
-export function EventListingCard({ data, href }: { data: EventListingData; href?: string }) {
+export function EventListingCard({ data, href }: { data: EventListingSummary; href?: string }) {
   const content = (
     <>
       <div className="absolute inset-0 flex items-center justify-center bg-white/10 text-muted-foreground">
@@ -33,11 +34,15 @@ export function EventListingCard({ data, href }: { data: EventListingData; href?
           <div className="flex flex-col gap-1 text-xs">
             <span>
               <span className="text-white/50 group-hover:text-black/50">DAY </span>
-              <span className="font-medium text-white group-hover:text-black">{data.day}</span>
+              <span className="font-medium text-white group-hover:text-black">
+                {formatEventDay(data.event_date)}
+              </span>
             </span>
             <span>
               <span className="text-white/50 group-hover:text-black/50">TIME </span>
-              <span className="font-medium text-white group-hover:text-black">{data.time}</span>
+              <span className="font-medium text-white group-hover:text-black">
+                {formatTimeRange(data.start_time, data.end_time)}
+              </span>
             </span>
           </div>
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white opacity-0 transition-opacity group-hover:bg-black group-hover:text-white group-hover:opacity-100">
@@ -62,7 +67,7 @@ export function EventListingCard({ data, href }: { data: EventListingData; href?
   return <div className={className}>{content}</div>;
 }
 
-export function EventListingRow({ data, href }: { data: EventListingData; href?: string }) {
+export function EventListingRow({ data, href }: { data: EventListingSummary; href?: string }) {
   const content = (
     <>
       <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10 text-muted-foreground">
@@ -73,11 +78,11 @@ export function EventListingRow({ data, href }: { data: EventListingData; href?:
         <span className="truncate text-xs text-muted-foreground">{data.venue}</span>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs">
-        <span className="text-foreground">{data.day}</span>
-        <span className="text-muted-foreground">{data.time}</span>
+        <span className="text-foreground">{formatEventDay(data.event_date)}</span>
+        <span className="text-muted-foreground">{formatTimeRange(data.start_time, data.end_time)}</span>
       </div>
       <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1.5 text-xs font-medium text-foreground">
-        {String(data.jobsOffered).padStart(2, "0")}/{data.jobsTotal} Jobs Offered
+        {String(data.filled_slots).padStart(2, "0")}/{data.total_slots} Jobs Offered
       </span>
     </>
   );

@@ -3,26 +3,45 @@ import { CalendarDays, MapPin, Users } from "lucide-react";
 import { AccountShell } from "@/components/account/account-shell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { mockEvents } from "@/lib/mock-account";
+import { formatEventDay } from "@/lib/format";
+import { listOrganizerEvents } from "@/lib/supabase/events";
+import { getCurrentProfile } from "@/lib/supabase/server";
+import type { EventStatus } from "@/lib/supabase/types";
 
-const statusStyles: Record<string, string> = {
-  Upcoming: "bg-primary/10 text-primary",
-  Completed: "bg-green-500/10 text-green-500",
-  Cancelled: "bg-white/10 text-muted-foreground",
+const statusLabels: Record<EventStatus, string> = {
+  upcoming: "Upcoming",
+  completed: "Completed",
+  cancelled: "Cancelled",
 };
 
-export default function OrganizerEventsPage() {
+const statusStyles: Record<EventStatus, string> = {
+  upcoming: "bg-primary/10 text-primary",
+  completed: "bg-green-500/10 text-green-500",
+  cancelled: "bg-white/10 text-muted-foreground",
+};
+
+function formatBudget(minVnd: number | null, maxVnd: number | null) {
+  if (!minVnd && !maxVnd) return "Budget TBD";
+  const format = (n: number) => `${n.toLocaleString("en-US")} VND`;
+  if (minVnd && maxVnd) return `${format(minVnd)} - ${format(maxVnd)}`;
+  return format((minVnd ?? maxVnd)!);
+}
+
+export default async function OrganizerEventsPage() {
+  const profile = await getCurrentProfile();
+  const events = profile ? await listOrganizerEvents(profile.id) : [];
+
   return (
     <AccountShell role="organizer">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{mockEvents.length} events created</p>
+        <p className="text-sm text-muted-foreground">{events.length} events created</p>
         <Button asChild className="h-10 rounded-[6px]">
           <Link href="/organizer/create">Create new Event</Link>
         </Button>
       </div>
 
       <div className="flex flex-col gap-3">
-        {mockEvents.map((event) => (
+        {events.map((event) => (
           <div
             key={event.id}
             className="flex flex-wrap items-center justify-between gap-4 rounded-md bg-white/5 p-5"
@@ -31,13 +50,13 @@ export default function OrganizerEventsPage() {
               <div className="flex items-center gap-2">
                 <span className="text-base font-semibold text-foreground">{event.name}</span>
                 <span className={cn("rounded-full px-3 py-1 text-xs font-medium", statusStyles[event.status])}>
-                  {event.status}
+                  {statusLabels[event.status]}
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays className="size-3.5" />
-                  {event.date}
+                  {formatEventDay(event.event_date)}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin className="size-3.5" />
@@ -45,15 +64,16 @@ export default function OrganizerEventsPage() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Users className="size-3.5" />
-                  {event.talentCount} {event.talentCount === 1 ? "talent" : "talents"} booked
+                  {event.filled_slots} {event.filled_slots === 1 ? "talent" : "talents"} booked
                 </span>
               </div>
             </div>
-            <span className="text-sm font-semibold text-foreground">{event.budget}</span>
+            <span className="text-sm font-semibold text-foreground">
+              {formatBudget(event.budget_min_vnd, event.budget_max_vnd)}
+            </span>
           </div>
         ))}
       </div>
     </AccountShell>
   );
 }
-
