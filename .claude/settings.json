@@ -1,0 +1,223 @@
+{
+  "attribution": {
+    "commit": "Author: Claude Code <noreply@anthropic.com>"
+  },
+  "permissions": {
+    "deny": [],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(rmdir *)",
+      "Bash(unlink *)",
+      "Bash(mv *)",
+      "Bash(git rm *)",
+      "Bash(git mv *)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(ri *)",
+      "PowerShell(rd *)",
+      "PowerShell(del *)",
+      "PowerShell(erase *)",
+      "PowerShell(rmdir *)",
+      "PowerShell(rm *)",
+      "PowerShell(Move-Item *)",
+      "PowerShell(mi *)",
+      "PowerShell(move *)",
+      "PowerShell(mv *)",
+      "PowerShell(Rename-Item *)",
+      "PowerShell(rni *)",
+      "PowerShell(ren *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/claude-session-start.sh ]; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/claude-session-start.sh; fi"
+          },
+          {
+            "type": "command",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/linear-session-start.sh ]; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/linear-session-start.sh; fi"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-dev-services.sh ]; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-dev-services.sh; fi",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/worktree-guard.sh ]; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/worktree-guard.sh; fi"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/command-guard.sh"
+          },
+          {
+            "type": "command",
+            "if": "Bash(git commit*)",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/tdd-enforce.sh"
+          },
+          {
+            "type": "command",
+            "if": "Bash(gh pr create*)",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pr-draft-default.sh"
+          },
+          {
+            "type": "command",
+            "if": "Bash(gh pr ready*)",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pr-ready-confirm.sh"
+          },
+          {
+            "type": "command",
+            "if": "Bash(gh pr create*)",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/serial-pr-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/worktree-edit-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/no-fallbacks-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/worktree-edit-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/no-fallbacks-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/worktree-edit-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/worktree-edit-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "EnterWorktree",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-main-nudge.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/serial-worktree-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "ExitWorktree",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/permission-allow-exit-after-merge.sh ]; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/permission-allow-exit-after-merge.sh; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "EnterWorktree",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/worktree-post-enter.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/serial-worktree-track.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "ExitWorktree",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-exit-pull-main.sh ]; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-exit-pull-main.sh; fi"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/serial-worktree-clear.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pr-created-agents.sh ]; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pr-created-agents.sh; fi"
+          },
+          {
+            "type": "command",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-merge-mark-exit.sh ]; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-merge-mark-exit.sh; fi"
+          },
+          {
+            "type": "command",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/linear-pr-nudge.sh ]; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/linear-pr-nudge.sh; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/linear-plan-nudge.sh ]; then \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/linear-plan-nudge.sh; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
