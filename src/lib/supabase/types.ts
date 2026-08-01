@@ -1,5 +1,7 @@
 import type { Role } from "@/lib/nav-items";
 
+export type KycStatus = "unverified" | "pending" | "verified" | "rejected";
+
 export interface Profile {
   id: string;
   role: Role;
@@ -8,6 +10,7 @@ export interface Profile {
   avatar_url: string | null;
   bio: string | null;
   location: string | null;
+  kyc_status: KycStatus;
   created_at: string;
 }
 
