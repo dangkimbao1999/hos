@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mockOrders } from "@/lib/mock-account";
+import { acceptBooking, rejectBooking } from "@/lib/supabase/package-actions";
 import type { BookingWithNames } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
 
@@ -26,6 +28,7 @@ function capitalize(s: string) {
 
 interface DisplayOrder {
   id: string;
+  fullId?: string;
   counterpartName: string;
   packageName: string;
   date: string;
@@ -34,12 +37,17 @@ interface DisplayOrder {
 }
 
 export function OrdersContent({ role, bookings }: { role: Role; bookings?: BookingWithNames[] }) {
+  const router = useRouter();
   const [activeFilter, setActiveFilter] = useState(SUB_FILTERS[0]);
+  const [pendingId, setPendingId] = useState<string | undefined>();
+  const [error, setError] = useState<string | undefined>();
   const counterpartLabel = role === "organizer" ? "Talent" : "Organizer";
+  const isTalent = role === "talent";
 
   const orders: DisplayOrder[] = bookings
     ? bookings.map((b) => ({
         id: b.id.slice(0, 8).toUpperCase(),
+        fullId: b.id,
         counterpartName: role === "organizer" ? b.talent_name : b.organizer_name,
         packageName: b.package_title,
         date: b.booked_date ?? "Flexible",
@@ -54,6 +62,18 @@ export function OrdersContent({ role, bookings }: { role: Role; bookings?: Booki
         price: o.priceVnd,
         status: o.status,
       }));
+
+  async function handle(action: "accept" | "reject", id: string) {
+    setError(undefined);
+    setPendingId(id);
+    const result = action === "accept" ? await acceptBooking(id) : await rejectBooking(id);
+    setPendingId(undefined);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -85,6 +105,8 @@ export function OrdersContent({ role, bookings }: { role: Role; bookings?: Booki
         </div>
       </div>
 
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
       <div className="flex flex-col overflow-hidden rounded-md bg-white/5">
         <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-4 border-b border-border px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
           <span>Order</span>
@@ -108,11 +130,33 @@ export function OrdersContent({ role, bookings }: { role: Role; bookings?: Booki
               </div>
               <span className="text-foreground">{order.date}</span>
               <span className="font-semibold text-foreground">{order.price}</span>
-              <span
-                className={cn("w-fit rounded-full px-3 py-1 text-xs font-medium", statusStyles[order.status])}
-              >
-                {order.status}
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn("w-fit rounded-full px-3 py-1 text-xs font-medium", statusStyles[order.status])}
+                >
+                  {order.status}
+                </span>
+                {isTalent && order.status === "Pending" && order.fullId && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={pendingId === order.fullId}
+                      onClick={() => handle("reject", order.fullId!)}
+                      className="rounded-[6px] bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/10"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pendingId === order.fullId}
+                      onClick={() => handle("accept", order.fullId!)}
+                      className="rounded-[6px] bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                    >
+                      Accept
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           ))
         )}

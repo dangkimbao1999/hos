@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import type { EventListingSummary, EventWithSlots } from "@/lib/supabase/types";
+import type {
+  EventApplicationWithDetails,
+  EventListingSummary,
+  EventWithSlots,
+} from "@/lib/supabase/types";
 
 /** Real event by slug, with its slots and organizer's display info — for the Event Detail page. */
 export async function getEventBySlug(slug: string): Promise<EventWithSlots | null> {
@@ -46,4 +50,45 @@ export async function listOrganizerEvents(organizerId: string): Promise<EventLis
     .order("event_date", { ascending: false });
 
   return data ?? [];
+}
+
+/** Every application to any of an organizer's events — for reviewing/accepting on Account > My Events. */
+export async function listApplicationsForOrganizer(
+  organizerId: string
+): Promise<EventApplicationWithDetails[]> {
+  const supabase = await createClient();
+
+  const { data: myEvents } = await supabase.from("events").select("id, name").eq("organizer_id", organizerId);
+  if (!myEvents || myEvents.length === 0) return [];
+  const eventNameById = new Map(myEvents.map((e) => [e.id, e.name]));
+
+  const { data: slots } = await supabase
+    .from("event_slots")
+    .select("id, event_id, category, price_usd")
+    .in("event_id", myEvents.map((e) => e.id));
+  if (!slots || slots.length === 0) return [];
+  const slotById = new Map(slots.map((s) => [s.id, s]));
+
+  const { data: applications } = await supabase
+    .from("event_applications")
+    .select("*")
+    .in("slot_id", slots.map((s) => s.id))
+    .order("created_at", { ascending: false });
+  if (!applications || applications.length === 0) return [];
+
+  const applicantIds = [...new Set(applications.map((a) => a.applicant_profile_id))];
+  const { data: applicants } = await supabase.from("profiles").select("id, full_name").in("id", applicantIds);
+  const applicantNameById = new Map((applicants ?? []).map((p) => [p.id, p.full_name]));
+
+  return applications.map((app) => {
+    const slot = slotById.get(app.slot_id);
+    return {
+      ...app,
+      slot_category: slot?.category ?? "",
+      slot_price_usd: slot?.price_usd ?? 0,
+      event_id: slot?.event_id ?? "",
+      event_name: slot ? (eventNameById.get(slot.event_id) ?? "") : "",
+      applicant_name: applicantNameById.get(app.applicant_profile_id) ?? "",
+    };
+  });
 }

@@ -136,3 +136,41 @@ export async function checkoutCart(
 
   return { success: true };
 }
+
+export async function acceptBooking(
+  bookingId: string
+): Promise<{ error: string } | { success: true }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
+
+  const { error } = await supabase
+    .from("package_bookings")
+    .update({ status: "confirmed" })
+    .eq("id", bookingId);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function rejectBooking(
+  bookingId: string
+): Promise<{ error: string } | { success: true }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
+
+  const { error } = await supabase
+    .from("package_bookings")
+    .update({ status: "cancelled" })
+    .eq("id", bookingId);
+  if (error) return { error: error.message };
+  return { success: true };
+}

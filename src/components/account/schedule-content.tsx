@@ -1,23 +1,18 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { mockSchedule } from "@/lib/mock-account";
-
-const WEEK_DAYS = [
-  { label: "Mon", date: 9 },
-  { label: "Tue", date: 10 },
-  { label: "Wed", date: 11 },
-  { label: "Thu", date: 12 },
-  { label: "Fri", date: 13 },
-  { label: "Sat", date: 14 },
-  { label: "Sun", date: 15 },
-];
+import type { ScheduleEntry } from "@/lib/supabase/schedule";
 
 const FIRST_HOUR = 8;
 const LAST_HOUR = 23;
 const HOURS = Array.from({ length: LAST_HOUR - FIRST_HOUR + 1 }, (_, i) => FIRST_HOUR + i);
 const ROW_HEIGHT = 56;
 const HEADER_HEIGHT = 36;
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const MONTH_LABELS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 function formatHour(hour: number) {
   const h = hour % 24;
@@ -28,40 +23,44 @@ function formatHour(hour: number) {
   return minutes === 0 ? `${displayHour}${period}` : `${displayHour}:${String(minutes).padStart(2, "0")}${period}`;
 }
 
-interface WeekEvent {
-  day: number;
-  title: string;
-  venue: string;
-  startHour: number;
-  endHour: number;
+function toIsoDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const WEEK_EVENTS: WeekEvent[] = [
-  { day: 0, title: "RPT MCK — Basic Package", venue: "UwuuHigh Club", startHour: 20, endHour: 24 },
-  { day: 2, title: "A$AP Rocky — Private Quotation", venue: "Commas Saigon", startHour: 21, endHour: 23.5 },
-  { day: 4, title: "The Groove Collective", venue: "ABC Dance Zone", startHour: 19, endHour: 21 },
-];
+export function ScheduleContent({ entries }: { entries: ScheduleEntry[] }) {
+  const today = new Date();
+  const mondayOffset = (today.getDay() + 6) % 7;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - mondayOffset);
 
-// Today (9th) falls under "Mon" in this mock week, so 1st of the month is a Sunday.
-const MONTH_LEADING_BLANKS = 6;
-const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
-const TODAY = 9;
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return { label: WEEKDAY_LABELS[i], date: d.getDate(), iso: toIsoDate(d) };
+  });
 
-export function ScheduleContent() {
-  const allEntries = mockSchedule.flatMap((day) =>
-    day.entries.map((entry) => ({ ...entry, date: day.date }))
+  const weekEvents = weekDays.flatMap((day, dayIndex) =>
+    entries.filter((e) => e.date === day.iso).map((e) => ({ ...e, dayIndex }))
   );
+
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const leadingBlanks = (firstOfMonth.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
   const gridHeight = HOURS.length * ROW_HEIGHT;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-4 rounded-md bg-white/5 p-5">
-        <h2 className="text-lg font-semibold text-foreground">Schedule - Upcoming Events</h2>
+        <h2 className="text-lg font-semibold text-foreground">Schedule - This Week</h2>
         <div className="overflow-x-auto">
           <div className="relative min-w-[680px]" style={{ paddingLeft: 56 }}>
             {/* Day headers */}
             <div className="flex" style={{ height: HEADER_HEIGHT }}>
-              {WEEK_DAYS.map((day) => (
+              {weekDays.map((day) => (
                 <div
                   key={day.label}
                   className="flex flex-1 items-center justify-center text-xs font-medium text-muted-foreground"
@@ -99,13 +98,13 @@ export function ScheduleContent() {
 
               {/* vertical day dividers */}
               <div className="absolute inset-0 flex">
-                {WEEK_DAYS.map((day) => (
+                {weekDays.map((day) => (
                   <div key={day.label} className="flex-1 border-l border-border first:border-l-0" />
                 ))}
               </div>
 
               {/* event blocks */}
-              {WEEK_EVENTS.map((event, i) => {
+              {weekEvents.map((event, i) => {
                 const top = (event.startHour - FIRST_HOUR) * ROW_HEIGHT;
                 const height = (event.endHour - event.startHour) * ROW_HEIGHT;
                 return (
@@ -115,7 +114,7 @@ export function ScheduleContent() {
                     style={{
                       top: top + 2,
                       height: height - 4,
-                      left: `calc(${event.day} * (100% / 7) + 4px)`,
+                      left: `calc(${event.dayIndex} * (100% / 7) + 4px)`,
                       width: `calc(100% / 7 - 8px)`,
                     }}
                   >
@@ -135,7 +134,9 @@ export function ScheduleContent() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3 rounded-md bg-white/5 p-5">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-foreground">July 2023</span>
+            <span className="text-sm font-semibold text-foreground">
+              {MONTH_LABELS[month]} {year}
+            </span>
             <div className="flex items-center gap-2">
               <button className="flex size-6 items-center justify-center rounded-full bg-white/5 text-muted-foreground hover:bg-white/10">
                 <ChevronLeft className="size-3.5" />
@@ -149,19 +150,19 @@ export function ScheduleContent() {
             </div>
           </div>
           <div className="grid grid-cols-7 gap-y-2 text-center text-xs">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+            {WEEKDAY_LABELS.map((d) => (
               <span key={d} className="text-muted-foreground">
                 {d}
               </span>
             ))}
-            {Array.from({ length: MONTH_LEADING_BLANKS }).map((_, i) => (
+            {Array.from({ length: leadingBlanks }).map((_, i) => (
               <span key={`blank-${i}`} />
             ))}
-            {MONTH_DAYS.map((d) => (
+            {monthDays.map((d) => (
               <span
                 key={d}
                 className={
-                  d === TODAY
+                  d === today.getDate()
                     ? "mx-auto flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground"
                     : "text-foreground"
                 }
@@ -174,17 +175,21 @@ export function ScheduleContent() {
 
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold text-foreground">Upcoming Events</h3>
-          <div className="flex flex-col gap-2">
-            {allEntries.map((entry, i) => (
-              <div key={i} className="flex items-center justify-between rounded-md bg-white/5 p-3">
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground">{entry.title}</span>
-                  <span className="text-xs text-muted-foreground">{entry.venue}</span>
+          {entries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No confirmed engagements yet.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {entries.map((entry, i) => (
+                <div key={i} className="flex items-center justify-between rounded-md bg-white/5 p-3">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-foreground">{entry.title}</span>
+                    <span className="text-xs text-muted-foreground">{entry.venue}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{entry.date}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{entry.date}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
