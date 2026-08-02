@@ -27,6 +27,7 @@ export function BillingContent({
 
   const displayGroups = isReal ? groups! : mockInvoiceGroups.map((g) => ({ title: g.event, venue: g.venue, lines: g.lines.map((l) => ({ name: l.name, date: l.date, amountVnd: 0 })) }));
   const [openGroups, setOpenGroups] = useState<string[]>(displayGroups.map((g) => g.title));
+  const [category, setCategory] = useState("All");
 
   function toggleGroup(title: string) {
     setOpenGroups((g) => (g.includes(title) ? g.filter((x) => x !== title) : [...g, title]));
@@ -79,7 +80,7 @@ export function BillingContent({
         </h2>
 
         <div className="flex gap-3">
-          <FilterPill label="Category" defaultValue="All" options={["All", "Solo Singer", "Band", "DJ"]} />
+          <FilterPill label="Category" value={category} onChange={setCategory} options={["All", "Solo Singer", "Band", "DJ"]} />
           <TimeRangeFilter />
         </div>
 

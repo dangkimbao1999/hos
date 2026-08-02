@@ -17,7 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { talentCategories, type Role } from "@/lib/nav-items";
 import { mockRoster, mockRosterByCategory } from "@/lib/mock-roster";
-import { createPackage } from "@/lib/supabase/package-actions";
+import { createPackage, updatePackage } from "@/lib/supabase/package-actions";
+import type { PackageRow } from "@/lib/supabase/types";
 
 type Step = "choose-talent" | "form" | "success";
 
@@ -34,10 +35,12 @@ function SelectField({
   label,
   name,
   options,
+  defaultValue,
 }: {
   label: string;
   name: string;
   options: string[];
+  defaultValue?: string;
 }) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
   return (
@@ -45,7 +48,7 @@ function SelectField({
       id={id}
       name={name}
       aria-label={label}
-      defaultValue=""
+      defaultValue={defaultValue ?? ""}
       className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <option value="" disabled>
@@ -64,17 +67,23 @@ export function CreatePackageDialog({
   role,
   open,
   onOpenChange,
+  editingPackage,
 }: {
   role: Role;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When present, the dialog edits this package instead of creating a new one. */
+  editingPackage?: PackageRow;
 }) {
   const isAgency = role === "agency";
+  const isEditing = !isAgency && !!editingPackage;
   const [step, setStep] = useState<Step>(isAgency ? "choose-talent" : "form");
   const [selectedTalentId, setSelectedTalentId] = useState(mockRoster[0]?.id ?? "");
-  const [repeatOn, setRepeatOn] = useState(true);
-  const [selectedDays, setSelectedDays] = useState<string[]>(["SAT", "SUN"]);
-  const [paymentMethod, setPaymentMethod] = useState<"Prepaid" | "Postpaid">("Prepaid");
+  const [repeatOn, setRepeatOn] = useState(editingPackage?.repeat_on ?? true);
+  const [selectedDays, setSelectedDays] = useState<string[]>(editingPackage?.repeat_days ?? ["SAT", "SUN"]);
+  const [paymentMethod, setPaymentMethod] = useState<"Prepaid" | "Postpaid">(
+    editingPackage?.payment_method ?? "Prepaid"
+  );
   const [error, setError] = useState<string | undefined>();
   const [pending, setPending] = useState(false);
 
@@ -101,7 +110,7 @@ export function CreatePackageDialog({
     formData.set("repeatDays", selectedDays.join(","));
     formData.set("paymentMethod", paymentMethod);
 
-    const result = await createPackage(formData);
+    const result = isEditing ? await updatePackage(editingPackage.id, formData) : await createPackage(formData);
     setPending(false);
     if ("error" in result) {
       setError(result.error);
@@ -110,13 +119,8 @@ export function CreatePackageDialog({
     setStep("success");
   }
 
-  function handleOpenChange(next: boolean) {
-    onOpenChange(next);
-    if (next) setStep(isAgency ? "choose-talent" : "form");
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px]">
         {step === "choose-talent" && (
           <>
@@ -174,7 +178,7 @@ export function CreatePackageDialog({
         {step === "form" && (
           <>
             <DialogHeader>
-              <DialogTitle>Create new Package</DialogTitle>
+              <DialogTitle>{isEditing ? "Edit Package" : "Create new Package"}</DialogTitle>
               <DialogDescription>Your offer request</DialogDescription>
             </DialogHeader>
 
@@ -192,15 +196,35 @@ export function CreatePackageDialog({
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3">
-                <SelectField label="Category" name="category" options={talentCategories.map((c) => c.label)} />
-                <SelectField label="Sub-Category" name="subCategory" options={["Rapper", "Ballad", "RnB", "Bolero"]} />
+                <SelectField
+                  label="Category"
+                  name="category"
+                  options={talentCategories.map((c) => c.label)}
+                  defaultValue={editingPackage?.category}
+                />
+                <SelectField
+                  label="Sub-Category"
+                  name="subCategory"
+                  options={["Rapper", "Ballad", "RnB", "Bolero"]}
+                  defaultValue={editingPackage?.sub_category ?? undefined}
+                />
               </div>
 
-              <Field label="Title" name="title" required />
+              <Field label="Title" name="title" defaultValue={editingPackage?.title} required />
 
               <div className="grid grid-cols-2 gap-3">
-                <SelectField label="Residency" name="residency" options={["Resident", "Non-resident"]} />
-                <SelectField label="Location" name="location" options={["HCM City", "Hanoi", "Da Nang"]} />
+                <SelectField
+                  label="Residency"
+                  name="residency"
+                  options={["Resident", "Non-resident"]}
+                  defaultValue={editingPackage?.residency ?? undefined}
+                />
+                <SelectField
+                  label="Location"
+                  name="location"
+                  options={["HCM City", "Hanoi", "Da Nang"]}
+                  defaultValue={editingPackage?.location}
+                />
               </div>
 
               {isAgency ? (
@@ -236,15 +260,21 @@ export function CreatePackageDialog({
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Start Date" name="startDate" type="date" required />
-                <Field label="End Date" name="endDate" type="date" required />
+                <Field label="Start Date" name="startDate" type="date" defaultValue={editingPackage?.start_date} required />
+                <Field label="End Date" name="endDate" type="date" defaultValue={editingPackage?.end_date} required />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Start Time" name="startTime" type="time" required />
-                <Field label="End Time" name="endTime" type="time" required />
+                <Field label="Start Time" name="startTime" type="time" defaultValue={editingPackage?.start_time} required />
+                <Field label="End Time" name="endTime" type="time" defaultValue={editingPackage?.end_time} required />
               </div>
 
-              <Textarea name="description" placeholder="Description" rows={3} className="rounded-[6px]" />
+              <Textarea
+                name="description"
+                placeholder="Description"
+                rows={3}
+                className="rounded-[6px]"
+                defaultValue={editingPackage?.description ?? undefined}
+              />
 
               {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -253,8 +283,8 @@ export function CreatePackageDialog({
                   Price Range<span className="text-primary">*</span>
                 </Label>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Price Min" name="priceMin" type="number" required />
-                  <Field label="Price Max" name="priceMax" type="number" required />
+                  <Field label="Price Min" name="priceMin" type="number" defaultValue={editingPackage?.price_min_vnd} required />
+                  <Field label="Price Max" name="priceMax" type="number" defaultValue={editingPackage?.price_max_vnd} required />
                 </div>
               </div>
 
@@ -290,7 +320,7 @@ export function CreatePackageDialog({
               </div>
 
               <Button type="submit" disabled={pending} className="h-11 w-full rounded-[6px]">
-                {pending ? "Creating..." : "Create new Package"}
+                {pending ? "Saving..." : isEditing ? "Save changes" : "Create new Package"}
               </Button>
               {isAgency && (
                 <Button
@@ -310,8 +340,12 @@ export function CreatePackageDialog({
           <div className="flex flex-col items-center gap-4 py-4 text-center">
             <CheckCircle2 className="size-12 text-green-500" />
             <div className="flex flex-col gap-1">
-              <DialogTitle>Package Created!</DialogTitle>
-              <DialogDescription>Your new package is now live for organizers to book.</DialogDescription>
+              <DialogTitle>{isEditing ? "Package Updated!" : "Package Created!"}</DialogTitle>
+              <DialogDescription>
+                {isEditing
+                  ? "Your changes are live."
+                  : "Your new package is now live for organizers to book."}
+              </DialogDescription>
             </div>
             <Button className="h-11 w-full rounded-[6px]" onClick={() => onOpenChange(false)}>
               Continue

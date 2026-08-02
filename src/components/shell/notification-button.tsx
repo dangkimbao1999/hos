@@ -1,14 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import { Bell, CreditCard, User } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { mockNotifications } from "@/lib/mock-notifications";
+import { markNotificationsRead } from "@/lib/supabase/notification-actions";
+import type { NotificationItem } from "@/lib/supabase/types";
 
-export function NotificationButton() {
-  const hasUnread = mockNotifications.some((n) => n.unread);
+const PERSON_KINDS = new Set(["application_received", "application_status", "booking_received"]);
+
+export function NotificationButton({ notifications }: { notifications: NotificationItem[] }) {
+  const [items, setItems] = useState(notifications);
+  const hasUnread = items.some((n) => n.unread);
+
+  async function handleOpenChange(open: boolean) {
+    if (open && hasUnread) {
+      setItems((prev) => prev.map((n) => ({ ...n, unread: false })));
+      await markNotificationsRead();
+    }
+  }
 
   return (
-    <Popover>
+    <Popover onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -21,31 +33,22 @@ export function NotificationButton() {
       </PopoverTrigger>
       <PopoverContent className="w-[380px] p-0" align="end">
         <div className="flex max-h-[420px] flex-col divide-y divide-border overflow-y-auto">
-          {mockNotifications.map((n) => (
-            <div key={n.id} className="flex items-start gap-3 p-4">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-foreground">
-                {n.kind === "payment" ? (
-                  <CreditCard className="size-4" />
-                ) : (
-                  <User className="size-4" />
-                )}
-              </span>
-              <p className="flex-1 text-sm text-foreground">
-                {n.kind === "payment" ? (
-                  <>
-                    Your payment at <span className="font-semibold">{n.time}</span> has complete.
-                    Please check Your Order to view detail and position to events
-                  </>
-                ) : (
-                  <>
-                    <span className="font-semibold">{n.applicantName}</span> applied to your{" "}
-                    {n.eventName}. View detail on Your Events
-                  </>
-                )}
-              </p>
-              {n.unread && <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" />}
-            </div>
-          ))}
+          {items.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">No notifications yet.</p>
+          ) : (
+            items.map((n) => (
+              <div key={n.id} className="flex items-start gap-3 p-4">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-foreground">
+                  {PERSON_KINDS.has(n.kind) ? <User className="size-4" /> : <CreditCard className="size-4" />}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm text-foreground">{n.message}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{n.time}</p>
+                </div>
+                {n.unread && <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" />}
+              </div>
+            ))
+          )}
         </div>
       </PopoverContent>
     </Popover>

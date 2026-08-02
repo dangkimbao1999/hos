@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { CheckCircle2, ImagePlus, X } from "lucide-react";
+import { CheckCircle2, ImagePlus, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,35 +14,40 @@ import { createEvent } from "@/lib/supabase/event-actions";
 const STEPS = ["Event Details", "Add Photos", "Review & Budget"] as const;
 type Step = (typeof STEPS)[number];
 
+interface SlotValues {
+  key: string;
+  category: string;
+  priceUsd: string;
+  quantity: string;
+}
+
 interface FormValues {
   eventName: string;
-  category: string;
   date: string;
   time: string;
   venue: string;
   description: string;
   budgetMin: string;
   budgetMax: string;
-  priceUsd: string;
-  quantity: string;
   guests: string;
   requirements: string;
 }
 
 const INITIAL_VALUES: FormValues = {
   eventName: "",
-  category: "",
   date: "",
   time: "",
   venue: "",
   description: "",
   budgetMin: "",
   budgetMax: "",
-  priceUsd: "",
-  quantity: "1",
   guests: "",
   requirements: "",
 };
+
+function emptySlot(): SlotValues {
+  return { key: crypto.randomUUID(), category: "", priceUsd: "", quantity: "1" };
+}
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
@@ -60,6 +65,7 @@ export default function CreateEventPage() {
   const [stepIndex, setStepIndex] = useState(0);
   const [done, setDone] = useState(false);
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES);
+  const [slots, setSlots] = useState<SlotValues[]>([emptySlot()]);
   const [photos, setPhotos] = useState<number[]>([]);
   const [error, setError] = useState<string | undefined>();
   const [pending, setPending] = useState(false);
@@ -69,6 +75,18 @@ export default function CreateEventPage() {
   function set<K extends keyof FormValues>(key: K) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setValues((v) => ({ ...v, [key]: e.target.value }));
+  }
+
+  function setSlot<K extends keyof SlotValues>(key: string, field: K) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setSlots((s) => s.map((slot) => (slot.key === key ? { ...slot, [field]: e.target.value } : slot)));
+  }
+
+  function addSlot() {
+    setSlots((s) => [...s, emptySlot()]);
+  }
+  function removeSlot(key: string) {
+    setSlots((s) => (s.length > 1 ? s.filter((slot) => slot.key !== key) : s));
   }
 
   function next() {
@@ -85,17 +103,20 @@ export default function CreateEventPage() {
 
     const formData = new FormData();
     formData.set("eventName", values.eventName);
-    formData.set("category", values.category);
     formData.set("date", values.date);
     formData.set("time", values.time);
     formData.set("venue", values.venue);
     formData.set("description", values.description);
     formData.set("budgetMin", values.budgetMin);
     formData.set("budgetMax", values.budgetMax);
-    formData.set("priceUsd", values.priceUsd);
-    formData.set("quantity", values.quantity);
     formData.set("guests", values.guests);
     formData.set("requirements", values.requirements);
+    formData.set(
+      "slots",
+      JSON.stringify(
+        slots.map((s) => ({ category: s.category, priceUsd: s.priceUsd, quantity: s.quantity }))
+      )
+    );
 
     const result = await createEvent(formData);
     setPending(false);
@@ -183,27 +204,6 @@ export default function CreateEventPage() {
               onChange={set("eventName")}
               required
             />
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="category" className="text-sm text-muted-foreground">
-                Category
-              </Label>
-              <select
-                id="category"
-                required
-                value={values.category}
-                onChange={set("category")}
-                className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="" disabled>
-                  Select talent category
-                </option>
-                {talentCategories.map((c) => (
-                  <option key={c.label} value={c.label} className="bg-background">
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Date" type="date" value={values.date} onChange={set("date")} required />
               <Field label="Time" type="time" value={values.time} onChange={set("time")} required />
@@ -304,24 +304,67 @@ export default function CreateEventPage() {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Field
-                label="Price per Talent (USD)"
-                type="number"
-                placeholder="2000"
-                value={values.priceUsd}
-                onChange={set("priceUsd")}
-                required
-              />
-              <Field
-                label="Talents Needed"
-                type="number"
-                min={1}
-                placeholder="3"
-                value={values.quantity}
-                onChange={set("quantity")}
-                required
-              />
+            <div className="flex flex-col gap-3">
+              <Label className="text-sm text-muted-foreground">Talent Slots</Label>
+              {slots.map((slot, i) => (
+                <div key={slot.key} className="flex items-end gap-3 rounded-[8px] bg-white/5 p-3">
+                  <div className="flex flex-1 flex-col gap-2">
+                    <Label htmlFor={`slot-category-${slot.key}`} className="text-xs text-muted-foreground">
+                      Category
+                    </Label>
+                    <select
+                      id={`slot-category-${slot.key}`}
+                      required
+                      value={slot.category}
+                      onChange={setSlot(slot.key, "category")}
+                      className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      <option value="" disabled>
+                        Select talent category
+                      </option>
+                      {talentCategories.map((c) => (
+                        <option key={c.label} value={c.label} className="bg-background">
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Field
+                    label="Price per Talent (USD)"
+                    type="number"
+                    placeholder="2000"
+                    value={slot.priceUsd}
+                    onChange={setSlot(slot.key, "priceUsd")}
+                    required
+                  />
+                  <div className="w-24">
+                    <Field
+                      label="Needed"
+                      type="number"
+                      min={1}
+                      value={slot.quantity}
+                      onChange={setSlot(slot.key, "quantity")}
+                      required
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={slots.length === 1}
+                    onClick={() => removeSlot(slot.key)}
+                    aria-label={`Remove slot ${i + 1}`}
+                    className="flex h-11 shrink-0 items-center justify-center rounded-[6px] bg-white/5 px-3 text-muted-foreground hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addSlot}
+                className="flex w-fit items-center gap-1.5 rounded-[6px] bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:bg-white/10"
+              >
+                <Plus className="size-3.5" /> Add Talent Slot
+              </button>
             </div>
             <Field
               label="Expected Guests"
@@ -352,6 +395,10 @@ export default function CreateEventPage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Photos</span>
                 <span className="font-medium text-foreground">{photos.length} added</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Talent Slots</span>
+                <span className="font-medium text-foreground">{slots.length}</span>
               </div>
             </div>
 

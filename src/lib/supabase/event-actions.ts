@@ -37,17 +37,30 @@ export async function createEvent(
   if (kycError) return kycError;
 
   const name = String(formData.get("eventName") ?? "");
-  const category = String(formData.get("category") ?? "");
   const eventDate = String(formData.get("date") ?? "");
   const time = String(formData.get("time") ?? "");
   const venue = String(formData.get("venue") ?? "");
   const description = String(formData.get("description") ?? "") || null;
   const budgetMinVnd = Number(formData.get("budgetMin") ?? 0) || null;
   const budgetMaxVnd = Number(formData.get("budgetMax") ?? 0) || null;
-  const priceUsd = Number(formData.get("priceUsd") ?? 0);
-  const quantity = Math.max(1, Number(formData.get("quantity") ?? 1));
   const expectedGuests = Number(formData.get("guests") ?? 0) || null;
   const specialRequirements = String(formData.get("requirements") ?? "") || null;
+
+  const slotsRaw = String(formData.get("slots") ?? "[]");
+  let parsedSlots: { category: string; priceUsd: string; quantity: string }[];
+  try {
+    parsedSlots = JSON.parse(slotsRaw);
+  } catch {
+    return { error: "Invalid talent slots." };
+  }
+  const slots = parsedSlots
+    .map((s) => ({
+      category: s.category,
+      price_usd: Number(s.priceUsd ?? 0),
+      quantity_total: Math.max(1, Number(s.quantity ?? 1)),
+    }))
+    .filter((s) => s.category);
+  if (slots.length === 0) return { error: "Add at least one talent slot." };
 
   // The wizard only collects a single start time — default a 90-minute set.
   const { start: startTime, end: endTime } = toTimeRange(time, 90);
@@ -75,12 +88,14 @@ export async function createEvent(
 
   if (eventError || !event) return { error: eventError?.message ?? "Could not create event" };
 
-  const { error: slotError } = await supabase.from("event_slots").insert({
-    event_id: event.id,
-    category,
-    price_usd: priceUsd,
-    quantity_total: quantity,
-  });
+  const { error: slotError } = await supabase.from("event_slots").insert(
+    slots.map((slot) => ({
+      event_id: event.id,
+      category: slot.category,
+      price_usd: slot.price_usd,
+      quantity_total: slot.quantity_total,
+    }))
+  );
 
   if (slotError) return { error: slotError.message };
 

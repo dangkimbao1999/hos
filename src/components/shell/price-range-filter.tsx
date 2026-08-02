@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import {
   Popover,
@@ -9,16 +8,20 @@ import {
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 
-const MAX_PRICE = 5_000_000_000;
+export const PRICE_FILTER_MAX = 5_000_000_000;
 
 function formatVnd(n: number) {
   return n.toLocaleString("en-US");
 }
 
-export function PriceRangeFilter() {
-  const [range, setRange] = useState<[number, number]>([0, MAX_PRICE]);
-
-  const label = range[0] === 0 && range[1] === MAX_PRICE ? "$0+" : `${formatVnd(range[0])}+`;
+export function PriceRangeFilter({
+  range,
+  onChange,
+}: {
+  range: [number, number];
+  onChange: (range: [number, number]) => void;
+}) {
+  const label = range[0] === 0 && range[1] === PRICE_FILTER_MAX ? "$0+" : `${formatVnd(range[0])}+`;
 
   return (
     <Popover>
@@ -33,9 +36,9 @@ export function PriceRangeFilter() {
           <Slider
             value={range}
             min={0}
-            max={MAX_PRICE}
+            max={PRICE_FILTER_MAX}
             step={1_000_000}
-            onValueChange={(v) => setRange(v as [number, number])}
+            onValueChange={(v) => onChange(v as [number, number])}
           />
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2 rounded-[6px] border border-input px-3 py-2.5 text-sm">
