@@ -8,7 +8,12 @@ export default async function AgencyLayout({ children }: { children: React.React
   if (profile.role !== "agency") redirect(`/${profile.role}`);
 
   return (
-    <AppShell role="agency" userName={profile.full_name} userAvatarUrl={profile.avatar_url}>
+    <AppShell
+      role="agency"
+      userName={profile.full_name}
+      userAvatarUrl={profile.avatar_url}
+      kycStatus={profile.kyc_status}
+    >
       {children}
     </AppShell>
   );

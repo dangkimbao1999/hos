@@ -14,14 +14,16 @@ import {
 } from "@/components/shell/social-icons";
 import { createEventCta, talentCategories, type Role } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
+import type { KycStatus } from "@/lib/supabase/types";
 
-export function Sidebar({ role }: { role: Role }) {
+export function Sidebar({ role, kycStatus }: { role: Role; kycStatus: KycStatus }) {
   const pathname = usePathname();
   const [categoryOpen, setCategoryOpen] = useState(role === "organizer");
   const [openSubcategory, setOpenSubcategory] = useState<string | null>(
     role === "organizer" ? "Solo Singer" : null
   );
   const [createOpen, setCreateOpen] = useState(false);
+  const isVerified = kycStatus === "verified";
 
   const isHome = pathname === `/${role}`;
 
@@ -29,7 +31,15 @@ export function Sidebar({ role }: { role: Role }) {
     <aside className="scrollbar-hide sticky top-0 flex h-screen w-[310px] shrink-0 flex-col gap-8 overflow-y-auto border-r border-border px-6 py-8">
       <SidebarLogo href={`/${role}`} />
 
-      {role === "organizer" ? (
+      {!isVerified ? (
+        <Link
+          href={`/${role}/kyc`}
+          className="flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          <Plus className="size-[18px]" />
+          Complete KYC to Continue
+        </Link>
+      ) : role === "organizer" ? (
         <Link
           href={`/${role}/create`}
           className="flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
