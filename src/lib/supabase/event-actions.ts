@@ -120,6 +120,13 @@ export async function acceptApplication(
   applicationId: string
 ): Promise<{ error: string } | { success: true }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
+
   const { error } = await supabase
     .from("event_applications")
     .update({ status: "accepted" })
@@ -132,6 +139,13 @@ export async function rejectApplication(
   applicationId: string
 ): Promise<{ error: string } | { success: true }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
+
   const { error } = await supabase
     .from("event_applications")
     .update({ status: "rejected" })
