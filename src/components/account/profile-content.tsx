@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { ImageIcon, KeyRound, Plus, ShieldCheck, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { talentCategories, type Role } from "@/lib/nav-items";
+import { updateProfile } from "@/lib/supabase/profile-actions";
 import type { CurrentUser } from "@/lib/supabase/types";
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
@@ -24,21 +25,39 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<"in
 
 export function ProfileContent({ role, profile }: { role: Role; profile: CurrentUser }) {
   const [keywords, setKeywords] = useState(["#A$APMob", "#Flacko", "#A$APRocky", "#PraiseTheLord", "#Rihanna"]);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+  const [saved, setSaved] = useState(false);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(undefined);
+    setSaved(false);
+    setPending(true);
+    const result = await updateProfile(new FormData(e.currentTarget));
+    setPending(false);
+    if ("error" in result) setError(result.error);
+    else setSaved(true);
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex justify-end gap-3">
-        <Button asChild variant="secondary" className="h-9 rounded-[6px]">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <div className="flex items-center justify-end gap-3">
+        {error && <span className="text-sm text-destructive">{error}</span>}
+        {saved && !error && <span className="text-sm text-muted-foreground">Saved.</span>}
+        <Button asChild type="button" variant="secondary" className="h-9 rounded-[6px]">
           <Link href={`/${role}/kyc`}>
             <ShieldCheck className="size-4" />
             KYC Verification
           </Link>
         </Button>
-        <Button variant="secondary" className="h-9 rounded-[6px]">
+        <Button type="button" variant="secondary" className="h-9 rounded-[6px]">
           <KeyRound className="size-4" />
           Change your Password
         </Button>
-        <Button className="h-9 rounded-[6px]">Save changes</Button>
+        <Button type="submit" disabled={pending} className="h-9 rounded-[6px]">
+          {pending ? "Saving..." : "Save changes"}
+        </Button>
       </div>
 
       <div className="overflow-hidden rounded-md bg-white/5">
@@ -66,11 +85,11 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
       <div className="flex flex-col gap-5 rounded-md bg-white/5 p-6">
         <h2 className="text-lg font-semibold text-foreground">Basic Information</h2>
         <div className="grid grid-cols-2 gap-5">
-          <Field label="Display Name" defaultValue={profile.full_name} />
+          <Field label="Display Name" name="fullName" defaultValue={profile.full_name} required />
           <Field label="Email" type="email" defaultValue={profile.email} disabled />
           <Field label="Phone number" type="tel" defaultValue="+84 90 123 4567" />
           <Field label="District" defaultValue="District 1" />
-          <Field label="City/Province" defaultValue={profile.location ?? ""} />
+          <Field label="City/Province" name="location" defaultValue={profile.location ?? ""} />
           {role === "talent" && (
             <>
               <div className="flex flex-col gap-2">
@@ -108,7 +127,7 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
         <h2 className="text-lg font-semibold text-foreground">Bio</h2>
         <div className="flex flex-col gap-2">
           <Label className="text-sm text-muted-foreground">Description</Label>
-          <Textarea rows={3} className="rounded-[6px]" defaultValue={profile.bio ?? ""} />
+          <Textarea rows={3} name="bio" className="rounded-[6px]" defaultValue={profile.bio ?? ""} />
         </div>
         <div className="flex flex-col gap-2">
           <Label className="text-sm text-muted-foreground">Thumbnail Image</Label>
@@ -146,7 +165,7 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
                 </span>
               ))}
             </div>
-            <button className="flex w-fit items-center gap-1 rounded-[6px] bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:bg-white/10">
+            <button type="button" className="flex w-fit items-center gap-1 rounded-[6px] bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:bg-white/10">
               <Plus className="size-3.5" /> Add Keyword
             </button>
           </div>
@@ -161,7 +180,7 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
               </select>
               <Input placeholder="Achievement" className="h-11 rounded-[6px]" />
             </div>
-            <button className="flex w-fit items-center gap-1 rounded-[6px] bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:bg-white/10">
+            <button type="button" className="flex w-fit items-center gap-1 rounded-[6px] bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:bg-white/10">
               <Plus className="size-3.5" /> Add Achievement
             </button>
           </div>
@@ -185,11 +204,11 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
               <Input placeholder="Add your instagram link" className="h-11 rounded-[6px]" />
             </div>
           </div>
-          <button className="flex w-fit items-center gap-1 rounded-[6px] bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:bg-white/10">
+          <button type="button" className="flex w-fit items-center gap-1 rounded-[6px] bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:bg-white/10">
             <Plus className="size-3.5" /> Add Social Link
           </button>
         </div>
       )}
-    </div>
+    </form>
   );
 }

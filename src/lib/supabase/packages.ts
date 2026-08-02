@@ -3,6 +3,7 @@ import type {
   BookingWithNames,
   CartItemWithPackage,
   PackageRow,
+  PackageWithTalent,
   Profile,
 } from "@/lib/supabase/types";
 
@@ -10,6 +11,27 @@ export async function getTalentBySlug(slug: string): Promise<Profile | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("profiles").select("*").eq("slug", slug).eq("role", "talent").single();
   return data as Profile | null;
+}
+
+/** Every active package with its talent's name/slug — for the organizer Discover grid. */
+export async function listDiscoverPackages(): Promise<PackageWithTalent[]> {
+  const supabase = await createClient();
+  const { data: packages } = await supabase
+    .from("packages")
+    .select("*")
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+  if (!packages || packages.length === 0) return [];
+
+  const talentIds = [...new Set(packages.map((p) => p.talent_id))];
+  const { data: talents } = await supabase.from("profiles").select("id, full_name, slug").in("id", talentIds);
+  const talentById = new Map((talents ?? []).map((t) => [t.id, t]));
+
+  return packages.flatMap((pkg) => {
+    const talent = talentById.get(pkg.talent_id);
+    if (!talent) return [];
+    return [{ ...pkg, talent_name: talent.full_name, talent_slug: talent.slug }];
+  });
 }
 
 export async function listPackagesForTalent(talentId: string): Promise<PackageRow[]> {
