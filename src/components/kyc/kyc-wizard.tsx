@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StepIndicator } from "@/components/shared/step-indicator";
 import { UploadSlot } from "@/components/shared/upload-slot";
+import { submitKyc } from "@/lib/supabase/kyc-actions";
 import type { Role } from "@/lib/nav-items";
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
@@ -25,17 +26,50 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<"in
 const INDIVIDUAL_STEPS = ["Personal Info", "ID Document", "Selfie Verification", "Review & Submit"];
 const BUSINESS_STEPS = ["Business Info", "Business Documents", "Review & Submit"];
 
+interface FormValues {
+  fullName: string;
+  dob: string;
+  nationality: string;
+  idNumber: string;
+  address: string;
+  companyName: string;
+  businessRegNo: string;
+  taxId: string;
+  businessAddress: string;
+  representativeName: string;
+}
+
+const INITIAL_VALUES: FormValues = {
+  fullName: "",
+  dob: "",
+  nationality: "",
+  idNumber: "",
+  address: "",
+  companyName: "",
+  businessRegNo: "",
+  taxId: "",
+  businessAddress: "",
+  representativeName: "",
+};
+
 export function KycWizard({ role }: { role: Role }) {
   const isBusiness = role === "agency";
   const steps = isBusiness ? BUSINESS_STEPS : INDIVIDUAL_STEPS;
 
   const [stepIndex, setStepIndex] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [values, setValues] = useState<FormValues>(INITIAL_VALUES);
   const [idFront, setIdFront] = useState(false);
   const [idBack, setIdBack] = useState(false);
   const [selfie, setSelfie] = useState(false);
   const [license, setLicense] = useState(false);
   const [taxDoc, setTaxDoc] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+  const [pending, setPending] = useState(false);
+
+  function set<K extends keyof FormValues>(key: K) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => setValues((v) => ({ ...v, [key]: e.target.value }));
+  }
 
   function next() {
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
@@ -43,8 +77,38 @@ export function KycWizard({ role }: { role: Role }) {
   function back() {
     setStepIndex((i) => Math.max(i - 1, 0));
   }
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError(undefined);
+    setPending(true);
+
+    const formData = new FormData();
+    if (isBusiness) {
+      formData.set("companyName", values.companyName);
+      formData.set("businessRegNo", values.businessRegNo);
+      formData.set("taxId", values.taxId);
+      formData.set("businessAddress", values.businessAddress);
+      formData.set("representativeName", values.representativeName);
+      formData.set("businessLicenseProvided", String(license));
+      formData.set("taxRegistrationProvided", String(taxDoc));
+    } else {
+      formData.set("fullName", values.fullName);
+      formData.set("dob", values.dob);
+      formData.set("nationality", values.nationality);
+      formData.set("idNumber", values.idNumber);
+      formData.set("address", values.address);
+      formData.set("idFrontProvided", String(idFront));
+      formData.set("idBackProvided", String(idBack));
+      formData.set("selfieProvided", String(selfie));
+    }
+
+    const result = await submitKyc(formData);
+    setPending(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
     setSubmitted(true);
   }
 
@@ -97,13 +161,37 @@ export function KycWizard({ role }: { role: Role }) {
             }}
             className="flex flex-col gap-5"
           >
-            <Field label="Full Legal Name" placeholder="Dang Kim Bao" required />
+            <Field
+              label="Full Legal Name"
+              placeholder="Dang Kim Bao"
+              value={values.fullName}
+              onChange={set("fullName")}
+              required
+            />
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Date of Birth" type="date" required />
-              <Field label="Nationality" placeholder="Vietnamese" required />
+              <Field label="Date of Birth" type="date" value={values.dob} onChange={set("dob")} required />
+              <Field
+                label="Nationality"
+                placeholder="Vietnamese"
+                value={values.nationality}
+                onChange={set("nationality")}
+                required
+              />
             </div>
-            <Field label="ID / Passport Number" placeholder="079xxxxxxxxx" required />
-            <Field label="Residential Address" placeholder="114 Nam Ky Khoi Nghia Str, HCMC" required />
+            <Field
+              label="ID / Passport Number"
+              placeholder="079xxxxxxxxx"
+              value={values.idNumber}
+              onChange={set("idNumber")}
+              required
+            />
+            <Field
+              label="Residential Address"
+              placeholder="114 Nam Ky Khoi Nghia Str, HCMC"
+              value={values.address}
+              onChange={set("address")}
+              required
+            />
             <Button type="submit" className="h-11 w-full rounded-[6px]">
               Next Step
             </Button>
@@ -176,13 +264,37 @@ export function KycWizard({ role }: { role: Role }) {
             }}
             className="flex flex-col gap-5"
           >
-            <Field label="Company Name" placeholder="Heart of Show Agency Co., Ltd" required />
+            <Field
+              label="Company Name"
+              placeholder="Heart of Show Agency Co., Ltd"
+              value={values.companyName}
+              onChange={set("companyName")}
+              required
+            />
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Business Registration No." placeholder="0312345678" required />
-              <Field label="Tax ID" placeholder="0312345678-001" required />
+              <Field
+                label="Business Registration No."
+                placeholder="0312345678"
+                value={values.businessRegNo}
+                onChange={set("businessRegNo")}
+                required
+              />
+              <Field label="Tax ID" placeholder="0312345678-001" value={values.taxId} onChange={set("taxId")} required />
             </div>
-            <Field label="Business Address" placeholder="98 Hai Ba Trung Str, HCMC" required />
-            <Field label="Representative Name" placeholder="Dang Kim Bao" required />
+            <Field
+              label="Business Address"
+              placeholder="98 Hai Ba Trung Str, HCMC"
+              value={values.businessAddress}
+              onChange={set("businessAddress")}
+              required
+            />
+            <Field
+              label="Representative Name"
+              placeholder="Dang Kim Bao"
+              value={values.representativeName}
+              onChange={set("representativeName")}
+              required
+            />
             <Button type="submit" className="h-11 w-full rounded-[6px]">
               Next Step
             </Button>
@@ -260,12 +372,13 @@ export function KycWizard({ role }: { role: Role }) {
             <p className="text-xs text-muted-foreground">
               By submitting, you confirm the information provided is accurate and belongs to you.
             </p>
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex gap-3">
               <Button type="button" variant="secondary" onClick={back} className="h-11 flex-1 rounded-[6px]">
                 Back
               </Button>
-              <Button type="submit" className="h-11 flex-1 rounded-[6px]">
-                Submit for Review
+              <Button type="submit" disabled={pending} className="h-11 flex-1 rounded-[6px]">
+                {pending ? "Submitting..." : "Submit for Review"}
               </Button>
             </div>
           </form>

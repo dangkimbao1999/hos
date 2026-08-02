@@ -8,7 +8,12 @@ export default async function TalentLayout({ children }: { children: React.React
   if (profile.role !== "talent") redirect(`/${profile.role}`);
 
   return (
-    <AppShell role="talent" userName={profile.full_name} userAvatarUrl={profile.avatar_url}>
+    <AppShell
+      role="talent"
+      userName={profile.full_name}
+      userAvatarUrl={profile.avatar_url}
+      kycStatus={profile.kyc_status}
+    >
       {children}
     </AppShell>
   );

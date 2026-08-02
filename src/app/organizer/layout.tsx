@@ -15,6 +15,7 @@ export default async function OrganizerLayout({ children }: { children: React.Re
       role="organizer"
       userName={profile.full_name}
       userAvatarUrl={profile.avatar_url}
+      kycStatus={profile.kyc_status}
       cartItems={cartItems}
     >
       {children}

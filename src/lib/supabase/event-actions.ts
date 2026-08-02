@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { assertKycVerified } from "@/lib/supabase/kyc";
 
 function slugify(name: string): string {
   const base = name
@@ -32,6 +33,8 @@ export async function createEvent(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
 
   const name = String(formData.get("eventName") ?? "");
   const category = String(formData.get("category") ?? "");
@@ -92,6 +95,8 @@ export async function applyToSlot(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
 
   const slotId = String(formData.get("slotId") ?? "");
   const offerRaw = formData.get("offerAmountUsd");

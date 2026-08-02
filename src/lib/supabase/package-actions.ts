@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { assertKycVerified } from "@/lib/supabase/kyc";
 
 export async function createPackage(
   formData: FormData
@@ -10,6 +11,8 @@ export async function createPackage(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
 
   const category = String(formData.get("category") ?? "");
   const subCategory = String(formData.get("subCategory") ?? "") || null;
@@ -59,6 +62,8 @@ export async function addToCart(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
 
   const packageId = String(formData.get("packageId") ?? "");
   const priceVnd = Number(formData.get("priceVnd") ?? 0);
@@ -77,6 +82,13 @@ export async function removeFromCart(
   cartItemId: string
 ): Promise<{ error: string } | { success: true }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
+
   const { error } = await supabase.from("cart_items").delete().eq("id", cartItemId);
   if (error) return { error: error.message };
   return { success: true };
@@ -90,6 +102,8 @@ export async function checkoutCart(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
 
   const paymentMethod = String(formData.get("paymentMethod") ?? "Prepaid");
   const itemIds = formData.getAll("itemIds").map(String);
