@@ -11,11 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { signIn } from "@/lib/supabase/actions";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | undefined>();
   const [pending, setPending] = useState(false);
+  const [googlePending, setGooglePending] = useState(false);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -24,6 +26,21 @@ export default function SignInPage() {
     const result = await signIn(new FormData(e.currentTarget));
     setPending(false);
     if (result?.error) setError(result.error);
+  }
+
+  async function handleGoogleSignIn() {
+    setError(undefined);
+    setGooglePending(true);
+    const supabase = createClient();
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (oauthError) {
+      setError(oauthError.message);
+      setGooglePending(false);
+    }
+    // On success the browser redirects to Google — no further client-side action needed.
   }
 
   return (
@@ -43,11 +60,11 @@ export default function SignInPage() {
         type="button"
         variant="secondary"
         className="h-[52px] w-full gap-2.5 rounded-[6px] text-base font-semibold"
-        disabled
-        title="Google sign-in isn't wired up yet"
+        disabled={googlePending}
+        onClick={handleGoogleSignIn}
       >
         <Image src="/icons/google.svg" alt="" width={24} height={24} />
-        Sign in with Google
+        {googlePending ? "Redirecting..." : "Sign in with Google"}
       </Button>
 
       <DividerOr />

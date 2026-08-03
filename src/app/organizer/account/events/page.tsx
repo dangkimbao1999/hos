@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatEventDay } from "@/lib/format";
 import { listApplicationsForOrganizer, listOrganizerEvents } from "@/lib/supabase/events";
+import { listReviewedSourceIds } from "@/lib/supabase/reviews";
 import { getCurrentProfile } from "@/lib/supabase/server";
 import type { EventStatus } from "@/lib/supabase/types";
 
@@ -30,9 +31,13 @@ function formatBudget(minVnd: number | null, maxVnd: number | null) {
 
 export default async function OrganizerEventsPage() {
   const profile = await getCurrentProfile();
-  const [events, applications] = profile
-    ? await Promise.all([listOrganizerEvents(profile.id), listApplicationsForOrganizer(profile.id)])
-    : [[], []];
+  const [events, applications, reviewed] = profile
+    ? await Promise.all([
+        listOrganizerEvents(profile.id),
+        listApplicationsForOrganizer(profile.id),
+        listReviewedSourceIds(profile.id),
+      ])
+    : [[], [], { bookingIds: new Set<string>(), applicationIds: new Set<string>() }];
 
   return (
     <AccountShell role="organizer">
@@ -79,6 +84,7 @@ export default async function OrganizerEventsPage() {
 
             <EventApplicationsPanel
               applications={applications.filter((a) => a.event_id === event.id)}
+              reviewedApplicationIds={reviewed.applicationIds}
             />
           </div>
         ))}

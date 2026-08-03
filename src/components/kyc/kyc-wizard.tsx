@@ -9,7 +9,16 @@ import { Label } from "@/components/ui/label";
 import { StepIndicator } from "@/components/shared/step-indicator";
 import { UploadSlot } from "@/components/shared/upload-slot";
 import { submitKyc } from "@/lib/supabase/kyc-actions";
+import { uploadKycDocument } from "@/lib/supabase/storage-actions";
 import type { Role } from "@/lib/nav-items";
+
+interface UploadState {
+  path: string | null;
+  pending: boolean;
+  error?: string;
+}
+
+const EMPTY_UPLOAD: UploadState = { path: null, pending: false };
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
@@ -59,16 +68,31 @@ export function KycWizard({ role }: { role: Role }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES);
-  const [idFront, setIdFront] = useState(false);
-  const [idBack, setIdBack] = useState(false);
-  const [selfie, setSelfie] = useState(false);
-  const [license, setLicense] = useState(false);
-  const [taxDoc, setTaxDoc] = useState(false);
+  const [idFront, setIdFront] = useState<UploadState>(EMPTY_UPLOAD);
+  const [idBack, setIdBack] = useState<UploadState>(EMPTY_UPLOAD);
+  const [selfie, setSelfie] = useState<UploadState>(EMPTY_UPLOAD);
+  const [license, setLicense] = useState<UploadState>(EMPTY_UPLOAD);
+  const [taxDoc, setTaxDoc] = useState<UploadState>(EMPTY_UPLOAD);
   const [error, setError] = useState<string | undefined>();
   const [pending, setPending] = useState(false);
 
   function set<K extends keyof FormValues>(key: K) {
     return (e: React.ChangeEvent<HTMLInputElement>) => setValues((v) => ({ ...v, [key]: e.target.value }));
+  }
+
+  function uploadSlotHandler(
+    docType: string,
+    setSlot: React.Dispatch<React.SetStateAction<UploadState>>
+  ) {
+    return async (file: File) => {
+      setSlot({ path: null, pending: true });
+      const formData = new FormData();
+      formData.set("file", file);
+      formData.set("docType", docType);
+      const result = await uploadKycDocument(formData);
+      if ("error" in result) setSlot({ path: null, pending: false, error: result.error });
+      else setSlot({ path: result.path, pending: false });
+    };
   }
 
   function next() {
@@ -90,17 +114,17 @@ export function KycWizard({ role }: { role: Role }) {
       formData.set("taxId", values.taxId);
       formData.set("businessAddress", values.businessAddress);
       formData.set("representativeName", values.representativeName);
-      formData.set("businessLicenseProvided", String(license));
-      formData.set("taxRegistrationProvided", String(taxDoc));
+      formData.set("businessLicensePath", license.path ?? "");
+      formData.set("taxRegistrationPath", taxDoc.path ?? "");
     } else {
       formData.set("fullName", values.fullName);
       formData.set("dob", values.dob);
       formData.set("nationality", values.nationality);
       formData.set("idNumber", values.idNumber);
       formData.set("address", values.address);
-      formData.set("idFrontProvided", String(idFront));
-      formData.set("idBackProvided", String(idBack));
-      formData.set("selfieProvided", String(selfie));
+      formData.set("idFrontPath", idFront.path ?? "");
+      formData.set("idBackPath", idBack.path ?? "");
+      formData.set("selfiePath", selfie.path ?? "");
     }
 
     const result = await submitKyc(formData);
@@ -208,15 +232,21 @@ export function KycWizard({ role }: { role: Role }) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <UploadSlot
-                label={idFront ? "Front uploaded" : "Upload Front"}
-                filled={idFront}
-                onToggle={() => setIdFront((v) => !v)}
+                label={idFront.path ? "Front uploaded" : "Upload Front"}
+                filled={!!idFront.path}
+                pending={idFront.pending}
+                error={idFront.error}
+                onFileSelected={uploadSlotHandler("id-front", setIdFront)}
+                onRemove={() => setIdFront(EMPTY_UPLOAD)}
                 className="aspect-[4/3]"
               />
               <UploadSlot
-                label={idBack ? "Back uploaded" : "Upload Back"}
-                filled={idBack}
-                onToggle={() => setIdBack((v) => !v)}
+                label={idBack.path ? "Back uploaded" : "Upload Back"}
+                filled={!!idBack.path}
+                pending={idBack.pending}
+                error={idBack.error}
+                onFileSelected={uploadSlotHandler("id-back", setIdBack)}
+                onRemove={() => setIdBack(EMPTY_UPLOAD)}
                 className="aspect-[4/3]"
               />
             </div>
@@ -224,7 +254,12 @@ export function KycWizard({ role }: { role: Role }) {
               <Button type="button" variant="secondary" onClick={back} className="h-11 flex-1 rounded-[6px]">
                 Back
               </Button>
-              <Button type="button" onClick={next} disabled={!idFront || !idBack} className="h-11 flex-1 rounded-[6px]">
+              <Button
+                type="button"
+                onClick={next}
+                disabled={!idFront.path || !idBack.path}
+                className="h-11 flex-1 rounded-[6px]"
+              >
                 Next Step
               </Button>
             </div>
@@ -240,16 +275,19 @@ export function KycWizard({ role }: { role: Role }) {
               </p>
             </div>
             <UploadSlot
-              label={selfie ? "Selfie uploaded" : "Upload Selfie"}
-              filled={selfie}
-              onToggle={() => setSelfie((v) => !v)}
+              label={selfie.path ? "Selfie uploaded" : "Upload Selfie"}
+              filled={!!selfie.path}
+              pending={selfie.pending}
+              error={selfie.error}
+              onFileSelected={uploadSlotHandler("selfie", setSelfie)}
+              onRemove={() => setSelfie(EMPTY_UPLOAD)}
               className="mx-auto aspect-square w-[220px]"
             />
             <div className="flex gap-3">
               <Button type="button" variant="secondary" onClick={back} className="h-11 flex-1 rounded-[6px]">
                 Back
               </Button>
-              <Button type="button" onClick={next} disabled={!selfie} className="h-11 flex-1 rounded-[6px]">
+              <Button type="button" onClick={next} disabled={!selfie.path} className="h-11 flex-1 rounded-[6px]">
                 Next Step
               </Button>
             </div>
@@ -311,15 +349,21 @@ export function KycWizard({ role }: { role: Role }) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <UploadSlot
-                label={license ? "License uploaded" : "Business License"}
-                filled={license}
-                onToggle={() => setLicense((v) => !v)}
+                label={license.path ? "License uploaded" : "Business License"}
+                filled={!!license.path}
+                pending={license.pending}
+                error={license.error}
+                onFileSelected={uploadSlotHandler("business-license", setLicense)}
+                onRemove={() => setLicense(EMPTY_UPLOAD)}
                 className="aspect-[4/3]"
               />
               <UploadSlot
-                label={taxDoc ? "Tax doc uploaded" : "Tax Registration"}
-                filled={taxDoc}
-                onToggle={() => setTaxDoc((v) => !v)}
+                label={taxDoc.path ? "Tax doc uploaded" : "Tax Registration"}
+                filled={!!taxDoc.path}
+                pending={taxDoc.pending}
+                error={taxDoc.error}
+                onFileSelected={uploadSlotHandler("tax-registration", setTaxDoc)}
+                onRemove={() => setTaxDoc(EMPTY_UPLOAD)}
                 className="aspect-[4/3]"
               />
             </div>
@@ -330,7 +374,7 @@ export function KycWizard({ role }: { role: Role }) {
               <Button
                 type="button"
                 onClick={next}
-                disabled={!license || !taxDoc}
+                disabled={!license.path || !taxDoc.path}
                 className="h-11 flex-1 rounded-[6px]"
               >
                 Next Step
@@ -347,11 +391,11 @@ export function KycWizard({ role }: { role: Role }) {
                 <>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Business License</span>
-                    <span className="font-medium text-foreground">{license ? "Uploaded" : "Missing"}</span>
+                    <span className="font-medium text-foreground">{license.path ? "Uploaded" : "Missing"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tax Registration</span>
-                    <span className="font-medium text-foreground">{taxDoc ? "Uploaded" : "Missing"}</span>
+                    <span className="font-medium text-foreground">{taxDoc.path ? "Uploaded" : "Missing"}</span>
                   </div>
                 </>
               ) : (
@@ -359,12 +403,12 @@ export function KycWizard({ role }: { role: Role }) {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">ID Document</span>
                     <span className="font-medium text-foreground">
-                      {idFront && idBack ? "Uploaded" : "Incomplete"}
+                      {idFront.path && idBack.path ? "Uploaded" : "Incomplete"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Selfie Verification</span>
-                    <span className="font-medium text-foreground">{selfie ? "Uploaded" : "Missing"}</span>
+                    <span className="font-medium text-foreground">{selfie.path ? "Uploaded" : "Missing"}</span>
                   </div>
                 </>
               )}

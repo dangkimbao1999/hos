@@ -6,8 +6,11 @@ import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mockOrders } from "@/lib/mock-account";
 import { acceptBooking, rejectBooking } from "@/lib/supabase/package-actions";
+import { ReviewDialog } from "@/components/shared/review-dialog";
 import type { BookingWithNames } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const statusStyles: Record<string, string> = {
   Pending: "bg-amber-500/10 text-amber-500",
@@ -34,15 +37,27 @@ interface DisplayOrder {
   date: string;
   price: string;
   status: string;
+  rawStatus?: string;
+  bookedDate?: string | null;
 }
 
-export function OrdersContent({ role, bookings }: { role: Role; bookings?: BookingWithNames[] }) {
+export function OrdersContent({
+  role,
+  bookings,
+  reviewedBookingIds,
+}: {
+  role: Role;
+  bookings?: BookingWithNames[];
+  reviewedBookingIds?: Set<string>;
+}) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState(SUB_FILTERS[0]);
   const [pendingId, setPendingId] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
+  const [reviewTarget, setReviewTarget] = useState<{ id: string; talentName: string } | null>(null);
   const counterpartLabel = role === "organizer" ? "Talent" : "Organizer";
   const isTalent = role === "talent";
+  const isOrganizer = role === "organizer";
 
   const orders: DisplayOrder[] = bookings
     ? bookings.map((b) => ({
@@ -53,6 +68,8 @@ export function OrdersContent({ role, bookings }: { role: Role; bookings?: Booki
         date: b.booked_date ?? "Flexible",
         price: formatVnd(b.price_vnd),
         status: capitalize(b.status),
+        rawStatus: b.status,
+        bookedDate: b.booked_date,
       }))
     : mockOrders.map((o) => ({
         id: o.id,
@@ -156,11 +173,38 @@ export function OrdersContent({ role, bookings }: { role: Role; bookings?: Booki
                     </button>
                   </>
                 )}
+                {isOrganizer &&
+                  order.fullId &&
+                  order.rawStatus === "confirmed" &&
+                  order.bookedDate &&
+                  order.bookedDate < todayIso() &&
+                  !reviewedBookingIds?.has(order.fullId) && (
+                    <button
+                      type="button"
+                      onClick={() => setReviewTarget({ id: order.fullId!, talentName: order.counterpartName })}
+                      className="rounded-[6px] bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/10"
+                    >
+                      Leave a Review
+                    </button>
+                  )}
               </div>
             </div>
           ))
         )}
       </div>
+
+      {reviewTarget && (
+        <ReviewDialog
+          open={reviewTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setReviewTarget(null);
+          }}
+          sourceType="booking"
+          sourceId={reviewTarget.id}
+          talentName={reviewTarget.talentName}
+          onSubmitted={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }

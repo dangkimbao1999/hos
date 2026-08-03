@@ -6,7 +6,7 @@ import { CategoryTabs } from "@/components/shell/category-tabs";
 import { FilterPill } from "@/components/shell/filter-pill";
 import { HashtagFilter } from "@/components/shell/hashtag-filter";
 import { PriceRangeFilter, PRICE_FILTER_MAX } from "@/components/shell/price-range-filter";
-import { TimeRangeFilter } from "@/components/shell/time-range-filter";
+import { TimeRangeFilter, type DateRange } from "@/components/shell/time-range-filter";
 import { SearchResultCard } from "@/components/shell/listing-card";
 import { talentCategories, type Role } from "@/lib/nav-items";
 import type { PackageWithTalent } from "@/lib/supabase/types";
@@ -23,11 +23,15 @@ export function DiscoverContent({ role, packages }: { role: Role; packages: Pack
   const [location, setLocation] = useState("All");
   const [sort, setSort] = useState(SORTS[0]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, PRICE_FILTER_MAX]);
+  const [hashtags, setHashtags] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
 
   const subCategoryOptions = [
     "All",
     ...(talentCategories.find((c) => c.label === activeCategory)?.subcategories ?? []),
   ];
+
+  const hashtagSuggestions = [...new Set(packages.flatMap((p) => p.talent_keywords))];
 
   function handleCategoryChange(category: string) {
     setActiveCategory(category);
@@ -41,6 +45,9 @@ export function DiscoverContent({ role, packages }: { role: Role; packages: Pack
         if (subCategory !== "All" && pkg.sub_category !== subCategory) return false;
         if (location !== "All" && pkg.location !== location) return false;
         if (pkg.price_max_vnd < priceRange[0] || pkg.price_min_vnd > priceRange[1]) return false;
+        if (hashtags.length > 0 && !hashtags.some((h) => pkg.talent_keywords.includes(h))) return false;
+        if (dateRange.start && dateRange.end && (pkg.end_date < dateRange.start || pkg.start_date > dateRange.end))
+          return false;
         return true;
       })
       .sort((a, b) => {
@@ -49,7 +56,7 @@ export function DiscoverContent({ role, packages }: { role: Role; packages: Pack
         // "Most Popular" has no real signal to sort by (no ratings/booking-count data yet) — falls back to Newest.
         return b.created_at.localeCompare(a.created_at);
       });
-  }, [packages, activeCategory, subCategory, location, priceRange, sort]);
+  }, [packages, activeCategory, subCategory, location, priceRange, sort, hashtags, dateRange]);
 
   return (
     <div className="flex flex-col gap-6 py-8">
@@ -68,8 +75,8 @@ export function DiscoverContent({ role, packages }: { role: Role; packages: Pack
         <FilterPill label="Sub-Category" options={subCategoryOptions} value={subCategory} onChange={setSubCategory} />
         <FilterPill label="Location" options={LOCATIONS} value={location} onChange={setLocation} />
         <PriceRangeFilter range={priceRange} onChange={setPriceRange} />
-        <TimeRangeFilter />
-        <HashtagFilter />
+        <TimeRangeFilter range={dateRange} onChange={setDateRange} />
+        <HashtagFilter selected={hashtags} onChange={setHashtags} suggestions={hashtagSuggestions} />
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fill,289px)] gap-6 pt-4">

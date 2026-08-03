@@ -6,7 +6,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { markNotificationsRead } from "@/lib/supabase/notification-actions";
 import type { NotificationItem } from "@/lib/supabase/types";
 
-const PERSON_KINDS = new Set(["application_received", "application_status", "booking_received"]);
+const PERSON_KINDS = new Set([
+  "application_received",
+  "application_status",
+  "booking_received",
+  "quotation_received",
+  "quotation_responded",
+]);
 
 export function NotificationButton({ notifications }: { notifications: NotificationItem[] }) {
   const [items, setItems] = useState(notifications);

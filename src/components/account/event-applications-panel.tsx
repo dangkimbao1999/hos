@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { acceptApplication, rejectApplication } from "@/lib/supabase/event-actions";
+import { ReviewDialog } from "@/components/shared/review-dialog";
 import type { EventApplicationWithDetails } from "@/lib/supabase/types";
 
 const statusStyles: Record<string, string> = {
@@ -13,15 +14,20 @@ const statusStyles: Record<string, string> = {
   rejected: "bg-white/10 text-muted-foreground",
 };
 
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
 export function EventApplicationsPanel({
   applications,
+  reviewedApplicationIds,
 }: {
   applications: EventApplicationWithDetails[];
+  reviewedApplicationIds?: Set<string>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pendingId, setPendingId] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
+  const [reviewTarget, setReviewTarget] = useState<{ id: string; talentName: string } | null>(null);
 
   if (applications.length === 0) return null;
 
@@ -90,10 +96,34 @@ export function EventApplicationsPanel({
                     </button>
                   </>
                 )}
+                {app.status === "accepted" &&
+                  app.event_date < todayIso() &&
+                  !reviewedApplicationIds?.has(app.id) && (
+                    <button
+                      type="button"
+                      onClick={() => setReviewTarget({ id: app.id, talentName: app.applicant_name })}
+                      className="rounded-[6px] bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/10"
+                    >
+                      Leave a Review
+                    </button>
+                  )}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {reviewTarget && (
+        <ReviewDialog
+          open={reviewTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setReviewTarget(null);
+          }}
+          sourceType="application"
+          sourceId={reviewTarget.id}
+          talentName={reviewTarget.talentName}
+          onSubmitted={() => router.refresh()}
+        />
       )}
     </div>
   );
