@@ -10,6 +10,7 @@ export interface Profile {
   avatar_url: string | null;
   bio: string | null;
   location: string | null;
+  keywords: string[];
   kyc_status: KycStatus;
   notifications_read_at: string | null;
   created_at: string;
@@ -97,6 +98,7 @@ export interface EventApplicationWithDetails extends EventApplicationRow {
   slot_price_usd: number;
   event_id: string;
   event_name: string;
+  event_date: string;
   applicant_name: string;
 }
 
@@ -129,6 +131,7 @@ export interface PackageRow {
 export interface PackageWithTalent extends PackageRow {
   talent_name: string;
   talent_slug: string;
+  talent_keywords: string[];
 }
 
 export interface CartItemRow {
@@ -169,12 +172,55 @@ export interface BookingWithNames extends PackageBookingRow {
   talent_name: string;
 }
 
+export type QuotationStatus = "pending" | "quoted" | "accepted" | "rejected" | "declined";
+
+export interface QuotationRow {
+  id: string;
+  organizer_id: string;
+  talent_id: string;
+  event_name: string;
+  event_date: string | null;
+  venue: string | null;
+  description: string | null;
+  budget_min_vnd: number | null;
+  budget_max_vnd: number | null;
+  status: QuotationStatus;
+  quoted_price_vnd: number | null;
+  talent_note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A quotation joined with both parties' names — for each side's Quotations tab. */
+export interface QuotationWithNames extends QuotationRow {
+  organizer_name: string;
+  talent_name: string;
+}
+
+export interface ReviewRow {
+  id: string;
+  reviewer_id: string;
+  talent_id: string;
+  booking_id: string | null;
+  application_id: string | null;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+}
+
+/** A review joined with the reviewer's display name — for the talent-detail Reviews tab. */
+export interface ReviewWithReviewer extends ReviewRow {
+  reviewer_name: string;
+}
+
 export type NotificationKind =
   | "application_received"
   | "application_status"
   | "booking_received"
   | "booking_status"
-  | "kyc_status";
+  | "kyc_status"
+  | "quotation_received"
+  | "quotation_responded";
 
 /** Derived at query time from event_applications/package_bookings/kyc_submissions — not a stored table. */
 export interface NotificationItem {

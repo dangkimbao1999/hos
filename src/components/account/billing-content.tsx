@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, DollarSign, Ticket } from "lucide-react";
 import { FilterPill } from "@/components/shell/filter-pill";
-import { TimeRangeFilter } from "@/components/shell/time-range-filter";
+import { TimeRangeFilter, type DateRange } from "@/components/shell/time-range-filter";
 import { cn } from "@/lib/utils";
 import { mockBillingSummary, mockInvoiceGroups } from "@/lib/mock-account";
 import type { BillingGroup, BillingSummary } from "@/lib/supabase/billing";
@@ -28,6 +28,7 @@ export function BillingContent({
   const displayGroups = isReal ? groups! : mockInvoiceGroups.map((g) => ({ title: g.event, venue: g.venue, lines: g.lines.map((l) => ({ name: l.name, date: l.date, amountVnd: 0 })) }));
   const [openGroups, setOpenGroups] = useState<string[]>(displayGroups.map((g) => g.title));
   const [category, setCategory] = useState("All");
+  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
 
   function toggleGroup(title: string) {
     setOpenGroups((g) => (g.includes(title) ? g.filter((x) => x !== title) : [...g, title]));
@@ -81,7 +82,7 @@ export function BillingContent({
 
         <div className="flex gap-3">
           <FilterPill label="Category" value={category} onChange={setCategory} options={["All", "Solo Singer", "Band", "DJ"]} />
-          <TimeRangeFilter />
+          <TimeRangeFilter range={dateRange} onChange={setDateRange} />
         </div>
 
         {displayGroups.length === 0 ? (

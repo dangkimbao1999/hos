@@ -6,7 +6,7 @@ import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { CreatePackageDialog } from "@/components/create-package/create-package-dialog";
 import { FilterPill } from "@/components/shell/filter-pill";
 import { PriceRangeFilter, PRICE_FILTER_MAX } from "@/components/shell/price-range-filter";
-import { TimeRangeFilter } from "@/components/shell/time-range-filter";
+import { TimeRangeFilter, type DateRange } from "@/components/shell/time-range-filter";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -51,6 +51,7 @@ export function PackagesContent({
   const [category, setCategory] = useState("All");
   const [location, setLocation] = useState("HCM City");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, PRICE_FILTER_MAX]);
+  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [editingPackage, setEditingPackage] = useState<PackageRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -93,7 +94,7 @@ export function PackagesContent({
           <FilterPill label="Category" value={category} onChange={setCategory} options={["All", "Solo Singer", "Band", "DJ"]} />
           <FilterPill label="Location" value={location} onChange={setLocation} options={["HCM City", "Hanoi", "Da Nang"]} />
           <PriceRangeFilter range={priceRange} onChange={setPriceRange} />
-          <TimeRangeFilter />
+          <TimeRangeFilter range={dateRange} onChange={setDateRange} />
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 rounded-full border border-input px-4 py-2.5">

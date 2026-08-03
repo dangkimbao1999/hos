@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
-import { ImageIcon, KeyRound, Plus, ShieldCheck, User, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useRef, useState, type FormEvent } from "react";
+import { Camera, ImageIcon, KeyRound, Plus, ShieldCheck, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { talentCategories, type Role } from "@/lib/nav-items";
 import { updateProfile } from "@/lib/supabase/profile-actions";
+import { uploadAvatar } from "@/lib/supabase/storage-actions";
 import type { CurrentUser } from "@/lib/supabase/types";
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
@@ -24,20 +26,51 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<"in
 }
 
 export function ProfileContent({ role, profile }: { role: Role; profile: CurrentUser }) {
-  const [keywords, setKeywords] = useState(["#A$APMob", "#Flacko", "#A$APRocky", "#PraiseTheLord", "#Rihanna"]);
+  const router = useRouter();
+  const [keywords, setKeywords] = useState<string[]>(profile.keywords ?? []);
+  const [keywordInput, setKeywordInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [saved, setSaved] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
+  const [avatarPending, setAvatarPending] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | undefined>();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarError(undefined);
+    setAvatarPending(true);
+    const formData = new FormData();
+    formData.set("avatar", file);
+    const result = await uploadAvatar(formData);
+    setAvatarPending(false);
+    if ("error" in result) setAvatarError(result.error);
+    else {
+      setAvatarUrl(result.url);
+      router.refresh();
+    }
+    e.target.value = "";
+  }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(undefined);
     setSaved(false);
     setPending(true);
-    const result = await updateProfile(new FormData(e.currentTarget));
+    const formData = new FormData(e.currentTarget);
+    formData.set("keywords", JSON.stringify(keywords));
+    const result = await updateProfile(formData);
     setPending(false);
     if ("error" in result) setError(result.error);
     else setSaved(true);
+  }
+
+  function addKeyword() {
+    const trimmed = keywordInput.trim();
+    if (trimmed && !keywords.includes(trimmed)) setKeywords((k) => [...k, trimmed]);
+    setKeywordInput("");
   }
 
   return (
@@ -65,18 +98,37 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
           <ImageIcon className="size-8" />
         </div>
         <div className="flex items-center gap-4 px-6 pb-6">
-          <div className="-mt-8 flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-card bg-white/10 text-muted-foreground">
-            {profile.avatar_url ? (
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={avatarPending}
+            className="group relative -mt-8 flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-card bg-white/10 text-muted-foreground"
+          >
+            {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.avatar_url} alt="" className="size-full object-cover" />
+              <img src={avatarUrl} alt="" className="size-full object-cover" />
             ) : (
               <User className="size-6" />
             )}
-          </div>
+            <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+              <Camera className="size-5 text-white" />
+            </span>
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
           <div className="flex flex-col pt-2">
             <span className="text-lg font-bold text-foreground">{profile.full_name || "Your Account"}</span>
             <span className="text-sm text-muted-foreground">
-              Manage your profile information, password and more
+              {avatarPending
+                ? "Uploading..."
+                : avatarError
+                  ? avatarError
+                  : "Manage your profile information, password and more"}
             </span>
           </div>
         </div>
@@ -165,9 +217,27 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
                 </span>
               ))}
             </div>
-            <button type="button" className="flex w-fit items-center gap-1 rounded-[6px] bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:bg-white/10">
-              <Plus className="size-3.5" /> Add Keyword
-            </button>
+            <div className="flex w-fit items-center gap-2">
+              <Input
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addKeyword();
+                  }
+                }}
+                placeholder="e.g. AcousticSet"
+                className="h-9 w-48 rounded-[6px] text-xs"
+              />
+              <button
+                type="button"
+                onClick={addKeyword}
+                className="flex shrink-0 items-center gap-1 rounded-[6px] bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:bg-white/10"
+              >
+                <Plus className="size-3.5" /> Add Keyword
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col gap-4 rounded-md bg-white/5 p-6">

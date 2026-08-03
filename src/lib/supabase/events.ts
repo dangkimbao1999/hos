@@ -58,9 +58,12 @@ export async function listApplicationsForOrganizer(
 ): Promise<EventApplicationWithDetails[]> {
   const supabase = await createClient();
 
-  const { data: myEvents } = await supabase.from("events").select("id, name").eq("organizer_id", organizerId);
+  const { data: myEvents } = await supabase
+    .from("events")
+    .select("id, name, event_date")
+    .eq("organizer_id", organizerId);
   if (!myEvents || myEvents.length === 0) return [];
-  const eventNameById = new Map(myEvents.map((e) => [e.id, e.name]));
+  const eventById = new Map(myEvents.map((e) => [e.id, e]));
 
   const { data: slots } = await supabase
     .from("event_slots")
@@ -82,12 +85,14 @@ export async function listApplicationsForOrganizer(
 
   return applications.map((app) => {
     const slot = slotById.get(app.slot_id);
+    const event = slot ? eventById.get(slot.event_id) : undefined;
     return {
       ...app,
       slot_category: slot?.category ?? "",
       slot_price_usd: slot?.price_usd ?? 0,
       event_id: slot?.event_id ?? "",
-      event_name: slot ? (eventNameById.get(slot.event_id) ?? "") : "",
+      event_name: event?.name ?? "",
+      event_date: event?.event_date ?? "",
       applicant_name: applicantNameById.get(app.applicant_profile_id) ?? "",
     };
   });

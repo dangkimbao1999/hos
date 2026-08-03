@@ -24,13 +24,18 @@ export async function listDiscoverPackages(): Promise<PackageWithTalent[]> {
   if (!packages || packages.length === 0) return [];
 
   const talentIds = [...new Set(packages.map((p) => p.talent_id))];
-  const { data: talents } = await supabase.from("profiles").select("id, full_name, slug").in("id", talentIds);
+  const { data: talents } = await supabase
+    .from("profiles")
+    .select("id, full_name, slug, keywords")
+    .in("id", talentIds);
   const talentById = new Map((talents ?? []).map((t) => [t.id, t]));
 
   return packages.flatMap((pkg) => {
     const talent = talentById.get(pkg.talent_id);
     if (!talent) return [];
-    return [{ ...pkg, talent_name: talent.full_name, talent_slug: talent.slug }];
+    return [
+      { ...pkg, talent_name: talent.full_name, talent_slug: talent.slug, talent_keywords: talent.keywords },
+    ];
   });
 }
 

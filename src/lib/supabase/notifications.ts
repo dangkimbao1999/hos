@@ -106,6 +106,29 @@ export async function listNotifications(
         });
       }
     }
+
+    const { data: respondedQuotations } = await supabase
+      .from("quotations")
+      .select("event_name, talent_id, status, updated_at")
+      .eq("organizer_id", profileId)
+      .in("status", ["quoted", "declined"]);
+
+    if (respondedQuotations && respondedQuotations.length > 0) {
+      const talentIds = [...new Set(respondedQuotations.map((q) => q.talent_id))];
+      const { data: talents } = await supabase.from("profiles").select("id, full_name").in("id", talentIds);
+      const talentNameById = new Map((talents ?? []).map((p) => [p.id, p.full_name]));
+
+      for (const q of respondedQuotations) {
+        raw.push({
+          kind: "quotation_responded",
+          message:
+            q.status === "quoted"
+              ? `${talentNameById.get(q.talent_id) ?? "The talent"} sent you a quote for ${q.event_name}.`
+              : `${talentNameById.get(q.talent_id) ?? "The talent"} declined your quote request for ${q.event_name}.`,
+          at: q.updated_at,
+        });
+      }
+    }
   } else if (role === "talent") {
     const { data: myPackages } = await supabase.from("packages").select("id, title").eq("talent_id", profileId);
 
@@ -161,6 +184,26 @@ export async function listNotifications(
               ? `Your application to ${event.name} (${slot.category}) was accepted.`
               : `Your application to ${event.name} (${slot.category}) was rejected.`,
           at: app.updated_at,
+        });
+      }
+    }
+
+    const { data: newQuotations } = await supabase
+      .from("quotations")
+      .select("event_name, organizer_id, created_at")
+      .eq("talent_id", profileId)
+      .eq("status", "pending");
+
+    if (newQuotations && newQuotations.length > 0) {
+      const organizerIds = [...new Set(newQuotations.map((q) => q.organizer_id))];
+      const { data: organizers } = await supabase.from("profiles").select("id, full_name").in("id", organizerIds);
+      const nameById = new Map((organizers ?? []).map((p) => [p.id, p.full_name]));
+
+      for (const q of newQuotations) {
+        raw.push({
+          kind: "quotation_received",
+          message: `${nameById.get(q.organizer_id) ?? "An organizer"} requested a quote for ${q.event_name}.`,
+          at: q.created_at,
         });
       }
     }

@@ -6,10 +6,12 @@ import { CardCarousel } from "@/components/shell/card-carousel";
 import { ListingCard } from "@/components/shell/listing-card";
 import { BookingPanel } from "@/components/talent-detail/booking-panel";
 import { RatingReviewCard } from "@/components/talent-detail/rating-review-card";
+import { RequestQuoteDialog } from "@/components/talent-detail/request-quote-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { mockTalentDetail } from "@/lib/mock-talent-detail";
 import { mockFeaturedListings } from "@/lib/mock-listings";
+import type { TalentReviewSummary } from "@/lib/supabase/reviews";
 import type { PackageRow, Profile } from "@/lib/supabase/types";
 
 const TABS = ["Overview", "Schedules", "Reviews", "About Talent"] as const;
@@ -24,13 +26,15 @@ const mockAvailability = [
 export function TalentDetailContent({
   talent,
   packages,
+  reviewSummary,
 }: {
   talent: Profile;
   packages: PackageRow[];
+  reviewSummary: TalentReviewSummary;
 }) {
   const [tab, setTab] = useState<Tab>("Overview");
-  // Rating/reviews/keywords/services/tagline have no real schema yet — kept
-  // as generic mock flavor text alongside the real name/bio/packages.
+  // Services/tagline/category have no real schema yet — kept as generic
+  // mock flavor text alongside the real name/bio/packages/reviews.
   const mock = mockTalentDetail;
   const bio = talent.bio || mock.bio;
 
@@ -65,7 +69,11 @@ export function TalentDetailContent({
         <div className="flex min-w-0 flex-1 flex-col gap-8">
           {tab === "Overview" && (
             <>
-              <RatingReviewCard talent={mock} />
+              <RatingReviewCard
+                avgRating={reviewSummary.avgRating}
+                count={reviewSummary.count}
+                reviews={reviewSummary.reviews}
+              />
 
               <h2 className="text-2xl font-bold tracking-[-0.03em] text-foreground">{mock.tagline}</h2>
 
@@ -87,19 +95,21 @@ export function TalentDetailContent({
 
               <p className="text-sm leading-relaxed text-muted-foreground">{bio}</p>
 
-              <div className="flex flex-col gap-3">
-                <h3 className="text-xl font-bold tracking-[-0.03em] text-foreground">Keyword</h3>
-                <div className="flex flex-wrap gap-2">
-                  {mock.keywords.map((keyword) => (
-                    <span
-                      key={keyword}
-                      className="rounded-full bg-white/5 px-4 py-2 text-sm text-foreground"
-                    >
-                      {keyword}
-                    </span>
-                  ))}
+              {talent.keywords.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <h3 className="text-xl font-bold tracking-[-0.03em] text-foreground">Keyword</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {talent.keywords.map((keyword) => (
+                      <span
+                        key={keyword}
+                        className="rounded-full bg-white/5 px-4 py-2 text-sm text-foreground"
+                      >
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex flex-col gap-4">
                 <h3 className="text-xl font-bold tracking-[-0.03em] text-foreground">
@@ -158,31 +168,32 @@ export function TalentDetailContent({
           {tab === "Reviews" && (
             <div className="flex flex-col gap-4">
               <h2 className="text-xl font-bold tracking-[-0.03em] text-foreground">
-                {mock.reviewCount} Reviews
+                {reviewSummary.count} Review{reviewSummary.count === 1 ? "" : "s"}
               </h2>
-              {mock.reviews.map((review, i) => (
-                <div key={i} className="flex flex-col gap-2 rounded-md bg-white/5 p-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-foreground">
-                        {review.reviewerName
-                          .split(" ")
-                          .map((w) => w[0])
-                          .slice(0, 2)
-                          .join("")}
+              {reviewSummary.reviews.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No reviews yet.</p>
+              ) : (
+                reviewSummary.reviews.map((review) => (
+                  <div key={review.id} className="flex flex-col gap-2 rounded-md bg-white/5 p-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-foreground">
+                          {review.reviewer_name
+                            .split(" ")
+                            .map((w) => w[0])
+                            .slice(0, 2)
+                            .join("")}
+                        </div>
+                        <span className="text-sm font-medium text-foreground">{review.reviewer_name}</span>
                       </div>
-                      <span className="text-sm font-medium text-foreground">
-                        {review.reviewerName}
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(review.created_at).toLocaleDateString("en-US")}
                       </span>
                     </div>
+                    <p className="text-sm text-muted-foreground">{review.comment || "No comment left."}</p>
                   </div>
-                  <span className="text-sm font-semibold text-foreground">{review.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    Performed: {review.performedAt} &middot; Date: {review.date}
-                  </span>
-                  <p className="text-sm text-muted-foreground">{review.body}</p>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
 
@@ -211,7 +222,10 @@ export function TalentDetailContent({
           )}
         </div>
 
-        <BookingPanel talentName={talent.full_name} packages={packages} />
+        <div className="flex h-fit w-[380px] shrink-0 flex-col gap-4">
+          <BookingPanel talentName={talent.full_name} packages={packages} />
+          <RequestQuoteDialog talentId={talent.id} talentName={talent.full_name} />
+        </div>
       </div>
     </div>
   );

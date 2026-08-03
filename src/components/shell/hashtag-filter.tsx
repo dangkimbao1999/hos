@@ -5,22 +5,27 @@ import { ChevronDown, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 
-const SUGGESTIONS = ["A$AP Rocky", "Rihanna", "A$AP Mob", "Flacko", "PraiseTheLord"];
-
-export function HashtagFilter() {
-  const [selected, setSelected] = useState<string[]>([]);
+export function HashtagFilter({
+  selected,
+  onChange,
+  suggestions,
+}: {
+  selected: string[];
+  onChange: (selected: string[]) => void;
+  suggestions: string[];
+}) {
   const [query, setQuery] = useState("");
 
   function addTag(tag: string) {
     const trimmed = tag.trim();
     if (trimmed && !selected.includes(trimmed)) {
-      setSelected((s) => [...s, trimmed]);
+      onChange([...selected, trimmed]);
     }
     setQuery("");
   }
 
   function removeTag(tag: string) {
-    setSelected((s) => s.filter((t) => t !== tag));
+    onChange(selected.filter((t) => t !== tag));
   }
 
   const label = selected.length > 0 ? `${selected.length} selected` : "None";
@@ -58,16 +63,18 @@ export function HashtagFilter() {
                 </button>
               </span>
             ))}
-            {SUGGESTIONS.filter((s) => !selected.includes(s)).map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => addTag(tag)}
-                className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/10"
-              >
-                {tag}
-              </button>
-            ))}
+            {suggestions
+              .filter((s) => !selected.includes(s))
+              .map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => addTag(tag)}
+                  className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/10"
+                >
+                  {tag}
+                </button>
+              ))}
           </div>
         </div>
       </PopoverContent>

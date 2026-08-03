@@ -57,7 +57,12 @@ export function Sidebar({ role, kycStatus }: { role: Role; kycStatus: KycStatus 
             <Plus className="size-[18px]" />
             {createEventCta[role]}
           </button>
-          <CreatePackageDialog role={role} open={createOpen} onOpenChange={setCreateOpen} />
+          <CreatePackageDialog
+            key={createOpen ? "create-open" : "create-closed"}
+            role={role}
+            open={createOpen}
+            onOpenChange={setCreateOpen}
+          />
         </>
       )}
 

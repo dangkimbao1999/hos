@@ -21,9 +21,24 @@ export async function updateProfile(
 
   if (!fullName) return { error: "Display name is required." };
 
+  const update: { full_name: string; bio: string | null; location: string | null; keywords?: string[] } = {
+    full_name: fullName,
+    bio,
+    location,
+  };
+  const keywordsRaw = formData.get("keywords");
+  if (keywordsRaw !== null) {
+    try {
+      const parsed = JSON.parse(String(keywordsRaw));
+      if (Array.isArray(parsed)) update.keywords = parsed.map(String);
+    } catch {
+      return { error: "Invalid keywords." };
+    }
+  }
+
   const { data: profile, error } = await supabase
     .from("profiles")
-    .update({ full_name: fullName, bio, location })
+    .update(update)
     .eq("id", user.id)
     .select("role")
     .single();

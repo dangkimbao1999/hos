@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { TalentDetailContent } from "@/components/talent-detail/talent-detail-content";
 import { getTalentBySlug, listPackagesForTalent } from "@/lib/supabase/packages";
+import { getTalentReviewSummary } from "@/lib/supabase/reviews";
 
 export default async function TalentDetailPage({
   params,
@@ -11,7 +12,10 @@ export default async function TalentDetailPage({
   const talent = await getTalentBySlug(slug);
   if (!talent) notFound();
 
-  const packages = await listPackagesForTalent(talent.id);
+  const [packages, reviewSummary] = await Promise.all([
+    listPackagesForTalent(talent.id),
+    getTalentReviewSummary(talent.id),
+  ]);
 
-  return <TalentDetailContent talent={talent} packages={packages} />;
+  return <TalentDetailContent talent={talent} packages={packages} reviewSummary={reviewSummary} />;
 }

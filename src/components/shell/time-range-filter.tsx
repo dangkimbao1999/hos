@@ -3,35 +3,50 @@
 import { useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
-// July 2023: 1st falls on Saturday -> 5 leading days from June, grid starts Mon 26 Jun.
-const CALENDAR_DAYS = [
-  26, 27, 28, 29, 30, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-  24, 25, 26, 27, 28, 29, 30, 31, 1, 2, 3, 4, 5,
+const MONTH_LABELS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
-const CURRENT_MONTH_START_INDEX = 5;
-const CURRENT_MONTH_END_INDEX = 35;
 
-export function TimeRangeFilter() {
-  const [selected, setSelected] = useState<{ start: number; end: number | null }>({
-    start: 13,
-    end: null,
-  });
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+export interface DateRange {
+  start: string | null;
+  end: string | null;
+}
 
-  function handleDayClick(index: number) {
-    if (selected.end !== null || index < selected.start) {
-      setSelected({ start: index, end: null });
+function toIso(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function TimeRangeFilter({
+  range,
+  onChange,
+}: {
+  range: DateRange;
+  onChange: (range: DateRange) => void;
+}) {
+  const today = new Date();
+  const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const leadingBlanks = (firstOfMonth.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  function handleDayClick(day: number) {
+    const clickedIso = toIso(new Date(year, month, day));
+    if (range.end !== null || range.start === null || clickedIso < range.start) {
+      onChange({ start: clickedIso, end: null });
     } else {
-      setSelected((s) => ({ ...s, end: index }));
+      onChange({ start: range.start, end: clickedIso });
     }
   }
 
-  const label = selected.end !== null ? "Custom Range" : "All Time";
+  const label = range.start && range.end ? "Custom Range" : "All Time";
 
   return (
     <Popover>
@@ -40,31 +55,26 @@ export function TimeRangeFilter() {
         <span className="font-medium">{label}</span>
         <ChevronDown className="size-3.5 text-muted-foreground" />
       </PopoverTrigger>
-      <PopoverContent className="w-[380px]" align="start">
+      <PopoverContent className="w-[320px]" align="start">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <button type="button" className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-white/5">
+            <button
+              type="button"
+              onClick={() => setViewDate(new Date(year, month - 1, 1))}
+              className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-white/5"
+            >
               <ChevronLeft className="size-4" />
             </button>
-            <span className="text-base font-bold text-foreground">July 2023</span>
-            <button type="button" className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-white/5">
+            <span className="text-base font-bold text-foreground">
+              {MONTH_LABELS[month]} {year}
+            </span>
+            <button
+              type="button"
+              onClick={() => setViewDate(new Date(year, month + 1, 1))}
+              className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-white/5"
+            >
               <ChevronRight className="size-4" />
             </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              placeholder="Start Time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="h-10 rounded-[6px]"
-            />
-            <Input
-              placeholder="End Time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="h-10 rounded-[6px]"
-            />
           </div>
 
           <div className="grid grid-cols-7 gap-y-2 text-center text-sm">
@@ -73,19 +83,20 @@ export function TimeRangeFilter() {
                 {d}
               </span>
             ))}
-            {CALENDAR_DAYS.map((day, index) => {
-              const inCurrentMonth = index >= CURRENT_MONTH_START_INDEX && index < CURRENT_MONTH_END_INDEX;
-              const inRange =
-                selected.end !== null && index >= selected.start && index <= selected.end;
-              const isEndpoint = index === selected.start || index === selected.end;
+            {Array.from({ length: leadingBlanks }).map((_, i) => (
+              <span key={`blank-${i}`} />
+            ))}
+            {monthDays.map((day) => {
+              const iso = toIso(new Date(year, month, day));
+              const inRange = range.start !== null && range.end !== null && iso >= range.start && iso <= range.end;
+              const isEndpoint = iso === range.start || iso === range.end;
               return (
                 <button
-                  key={index}
+                  key={day}
                   type="button"
-                  onClick={() => handleDayClick(index)}
+                  onClick={() => handleDayClick(day)}
                   className={cn(
-                    "mx-auto flex size-7 items-center justify-center rounded-full transition-colors",
-                    inCurrentMonth ? "text-foreground" : "text-muted-foreground/40",
+                    "mx-auto flex size-7 items-center justify-center rounded-full text-foreground transition-colors",
                     inRange && "bg-primary/20",
                     isEndpoint && "bg-primary text-primary-foreground"
                   )}
@@ -95,6 +106,16 @@ export function TimeRangeFilter() {
               );
             })}
           </div>
+
+          {(range.start || range.end) && (
+            <button
+              type="button"
+              onClick={() => onChange({ start: null, end: null })}
+              className="self-start text-xs text-muted-foreground underline"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </PopoverContent>
     </Popover>
