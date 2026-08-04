@@ -13,15 +13,11 @@ export async function getTalentBySlug(slug: string): Promise<Profile | null> {
   return data as Profile | null;
 }
 
-/** Every active package with its talent's name/slug — for the organizer Discover grid. */
-export async function listDiscoverPackages(): Promise<PackageWithTalent[]> {
-  const supabase = await createClient();
-  const { data: packages } = await supabase
-    .from("packages")
-    .select("*")
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
-  if (!packages || packages.length === 0) return [];
+export async function withTalentInfo(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  packages: PackageRow[]
+): Promise<PackageWithTalent[]> {
+  if (packages.length === 0) return [];
 
   const talentIds = [...new Set(packages.map((p) => p.talent_id))];
   const { data: talents } = await supabase
@@ -37,6 +33,55 @@ export async function listDiscoverPackages(): Promise<PackageWithTalent[]> {
       { ...pkg, talent_name: talent.full_name, talent_slug: talent.slug, talent_keywords: talent.keywords },
     ];
   });
+}
+
+/** Every active package with its talent's name/slug — for the organizer Discover grid. */
+export async function listDiscoverPackages(): Promise<PackageWithTalent[]> {
+  const supabase = await createClient();
+  const { data: packages } = await supabase
+    .from("packages")
+    .select("*")
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+  return withTalentInfo(supabase, packages ?? []);
+}
+
+/** Admin-curated (is_most_popular = true, set directly in the DB — no admin portal yet) — for the organizer Home page. */
+export async function listMostPopularPackages(limit: number): Promise<PackageWithTalent[]> {
+  const supabase = await createClient();
+  const { data: packages } = await supabase
+    .from("packages")
+    .select("*")
+    .eq("status", "active")
+    .eq("is_most_popular", true)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return withTalentInfo(supabase, packages ?? []);
+}
+
+/** Admin-curated (is_editor_choice = true, set directly in the DB — no admin portal yet) — for the organizer Home page. */
+export async function listEditorChoicePackages(limit: number): Promise<PackageWithTalent[]> {
+  const supabase = await createClient();
+  const { data: packages } = await supabase
+    .from("packages")
+    .select("*")
+    .eq("status", "active")
+    .eq("is_editor_choice", true)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return withTalentInfo(supabase, packages ?? []);
+}
+
+/** Newest active packages — for the organizer Home page's "Recently Added" section. */
+export async function listRecentPackages(limit: number): Promise<PackageWithTalent[]> {
+  const supabase = await createClient();
+  const { data: packages } = await supabase
+    .from("packages")
+    .select("*")
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return withTalentInfo(supabase, packages ?? []);
 }
 
 export async function listPackagesForTalent(talentId: string): Promise<PackageRow[]> {
