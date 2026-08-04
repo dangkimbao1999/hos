@@ -16,6 +16,23 @@ function makeChain(resolved: unknown) {
   return chain;
 }
 
+function makeProfilesChain(fixture: Record<string, unknown>) {
+  let selectedFields: string[] = [];
+  const chain = {
+    select: (fields: string) => {
+      selectedFields = fields.split(",").map((f) => f.trim());
+      return chain;
+    },
+    eq: () => chain,
+    single: async () => {
+      const data: Record<string, unknown> = {};
+      for (const field of selectedFields) data[field] = fixture[field];
+      return { data };
+    },
+  };
+  return chain;
+}
+
 mock.module("@/lib/supabase/server", () => ({
   createClient: async () => ({
     from: (table: string) => {
@@ -29,7 +46,7 @@ mock.module("@/lib/supabase/server", () => ({
         return chain;
       }
       if (table === "profiles") {
-        return makeChain({
+        return makeProfilesChain({
           full_name: "420 Ent.",
           location: "District 1, Ho Chi Minh City",
           bio: "The organizer's real bio.",
