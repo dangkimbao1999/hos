@@ -2,6 +2,16 @@ import type { Role } from "@/lib/nav-items";
 
 export type KycStatus = "unverified" | "pending" | "verified" | "rejected";
 
+export interface SocialLink {
+  platform: string;
+  url: string;
+}
+
+export interface Achievement {
+  title: string;
+  subtitle: string;
+}
+
 export interface Profile {
   id: string;
   role: Role;
@@ -14,6 +24,13 @@ export interface Profile {
   kyc_status: KycStatus;
   notifications_read_at: string | null;
   created_at: string;
+  cover_url: string | null;
+  gallery_urls: string[];
+  social_links: SocialLink[];
+  achievements: Achievement[];
+  services: string[];
+  date_of_birth: string | null;
+  genre: string | null;
 }
 
 /** Profile row plus the auth email, which lives on auth.users, not profiles. */
@@ -89,7 +106,7 @@ export interface EventListingSummary {
 /** Full event detail: the event row, its slots, and the organizer's profile. */
 export interface EventWithSlots extends EventRow {
   slots: EventSlotRow[];
-  organizer: Pick<Profile, "full_name" | "location">;
+  organizer: Pick<Profile, "full_name" | "location" | "bio" | "gallery_urls" | "social_links">;
 }
 
 /** An application joined with its slot/event/applicant info — for the organizer's review UI. */
