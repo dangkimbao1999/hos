@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { addMonths, getMonthGrid, startOfWeekMonday, toIsoDate } from "@/lib/calendar";
+import { cn } from "@/lib/utils";
 import type { ScheduleEntry } from "@/lib/supabase/schedule";
 
 const FIRST_HOUR = 8;
@@ -14,7 +17,7 @@ const MONTH_LABELS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-function formatHour(hour: number) {
+export function formatHour(hour: number) {
   const h = hour % 24;
   const wholeHour = Math.floor(h);
   const minutes = Math.round((h - wholeHour) * 60);
@@ -23,16 +26,13 @@ function formatHour(hour: number) {
   return minutes === 0 ? `${displayHour}${period}` : `${displayHour}:${String(minutes).padStart(2, "0")}${period}`;
 }
 
-function toIsoDate(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export function ScheduleContent({ entries }: { entries: ScheduleEntry[] }) {
   const today = new Date();
-  const mondayOffset = (today.getDay() + 6) % 7;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - mondayOffset);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
 
+  const monday = startOfWeekMonday(selectedDate);
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
@@ -43,19 +43,46 @@ export function ScheduleContent({ entries }: { entries: ScheduleEntry[] }) {
     entries.filter((e) => e.date === day.iso).map((e) => ({ ...e, dayIndex }))
   );
 
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const firstOfMonth = new Date(year, month, 1);
-  const leadingBlanks = (firstOfMonth.getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const weekRangeLabel =
+    monday.getMonth() === sunday.getMonth()
+      ? `${MONTH_LABELS[monday.getMonth()]} ${monday.getDate()}–${sunday.getDate()}, ${sunday.getFullYear()}`
+      : `${MONTH_LABELS[monday.getMonth()]} ${monday.getDate()} – ${MONTH_LABELS[sunday.getMonth()]} ${sunday.getDate()}, ${sunday.getFullYear()}`;
+
+  const { leadingBlanks, days: monthDays } = getMonthGrid(viewYear, viewMonth);
+
+  function goToPrevMonth() {
+    const next = addMonths(viewYear, viewMonth, -1);
+    setViewYear(next.year);
+    setViewMonth(next.month);
+  }
+
+  function goToNextMonth() {
+    const next = addMonths(viewYear, viewMonth, 1);
+    setViewYear(next.year);
+    setViewMonth(next.month);
+  }
+
+  function goToToday() {
+    setSelectedDate(today);
+    setViewYear(today.getFullYear());
+    setViewMonth(today.getMonth());
+  }
+
+  function selectDay(day: number) {
+    setSelectedDate(new Date(viewYear, viewMonth, day));
+  }
 
   const gridHeight = HOURS.length * ROW_HEIGHT;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="flex flex-col gap-4 rounded-md bg-white/5 p-5">
-        <h2 className="text-lg font-semibold text-foreground">Schedule - This Week</h2>
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-lg font-semibold text-foreground">Schedule</h2>
+          <p className="text-xs text-muted-foreground">{weekRangeLabel}</p>
+        </div>
         <div className="overflow-x-auto">
           <div className="relative min-w-[680px]" style={{ paddingLeft: 56 }}>
             {/* Day headers */}
@@ -135,16 +162,30 @@ export function ScheduleContent({ entries }: { entries: ScheduleEntry[] }) {
         <div className="flex flex-col gap-3 rounded-md bg-white/5 p-5">
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-foreground">
-              {MONTH_LABELS[month]} {year}
+              {MONTH_LABELS[viewMonth]} {viewYear}
             </span>
             <div className="flex items-center gap-2">
-              <button className="flex size-6 items-center justify-center rounded-full bg-white/5 text-muted-foreground hover:bg-white/10">
+              <button
+                type="button"
+                onClick={goToPrevMonth}
+                aria-label="Previous month"
+                className="flex size-6 items-center justify-center rounded-full bg-white/5 text-muted-foreground hover:bg-white/10"
+              >
                 <ChevronLeft className="size-3.5" />
               </button>
-              <button className="flex size-6 items-center justify-center rounded-full bg-white/5 text-muted-foreground hover:bg-white/10">
+              <button
+                type="button"
+                onClick={goToNextMonth}
+                aria-label="Next month"
+                className="flex size-6 items-center justify-center rounded-full bg-white/5 text-muted-foreground hover:bg-white/10"
+              >
                 <ChevronRight className="size-3.5" />
               </button>
-              <button className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-foreground hover:bg-white/10">
+              <button
+                type="button"
+                onClick={goToToday}
+                className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-foreground hover:bg-white/10"
+              >
                 Today
               </button>
             </div>
@@ -158,18 +199,27 @@ export function ScheduleContent({ entries }: { entries: ScheduleEntry[] }) {
             {Array.from({ length: leadingBlanks }).map((_, i) => (
               <span key={`blank-${i}`} />
             ))}
-            {monthDays.map((d) => (
-              <span
-                key={d}
-                className={
-                  d === today.getDate()
-                    ? "mx-auto flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                    : "text-foreground"
-                }
-              >
-                {d}
-              </span>
-            ))}
+            {monthDays.map((d) => {
+              const isSelected =
+                viewYear === selectedDate.getFullYear() &&
+                viewMonth === selectedDate.getMonth() &&
+                d === selectedDate.getDate();
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => selectDay(d)}
+                  className={cn(
+                    "mx-auto flex size-6 items-center justify-center rounded-full",
+                    isSelected
+                      ? "bg-primary text-primary-foreground"
+                      : "text-foreground hover:bg-white/10"
+                  )}
+                >
+                  {d}
+                </button>
+              );
+            })}
           </div>
         </div>
 
