@@ -158,10 +158,10 @@ simply unused outside their owning role).
   fields; Achievement list → `talent.achievements`, rendered as
   title/subtitle rows with a checkmark icon (decorative, no per-item data
   needed).
-- Icons: use `lucide-react`'s brand icons where available (Facebook,
-  Instagram, Youtube, Twitter/X, Linkedin); fall back to a generic `Link`
-  icon for platforms lucide doesn't ship a glyph for (SoundCloud, Spotify,
-  TikTok, Threads, Behance).
+- Icons: checked the installed `lucide-react` (1.28.0) — it ships no
+  brand/social glyphs at all (Facebook/Instagram/Youtube/etc. don't exist
+  in this version). Every platform renders with the same generic `Link`
+  icon next to the `platform: value` text instead of a per-brand icon.
 
 **Event detail page** (`src/components/event-detail/event-detail-content.tsx`),
 "About Organizer" tab — corrected to actually be the organizer's profile,
