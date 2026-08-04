@@ -14,7 +14,7 @@ export interface ListingCardData {
   priceUnit?: string;
 }
 
-function formatPriceRange(min: number, max: number, currency: "USD" | "VND" = "USD") {
+export function formatPriceRange(min: number, max: number, currency: "USD" | "VND" = "USD") {
   if (currency === "VND") {
     return `${min.toLocaleString("en-US")} - ${max.toLocaleString("en-US")} VND`;
   }
@@ -142,7 +142,9 @@ export function ListingRow({ data }: { data: ListingCardData }) {
         <span className="truncate text-xs text-muted-foreground">{data.category}</span>
       </div>
       <span className="shrink-0 text-sm font-semibold text-foreground">
-        ${data.priceMin.toLocaleString()}+
+        {data.currency === "VND"
+          ? `${data.priceMin.toLocaleString("en-US")}+ VND`
+          : `$${data.priceMin.toLocaleString()}+`}
       </span>
     </div>
   );

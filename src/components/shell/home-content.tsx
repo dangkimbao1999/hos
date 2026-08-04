@@ -2,44 +2,43 @@ import Link from "next/link";
 import { CardCarousel } from "@/components/shell/card-carousel";
 import { ListingCard, ListingRow } from "@/components/shell/listing-card";
 import { PromoCard } from "@/components/shell/promo-card";
-import { mockFeaturedListings, mockRecentListings } from "@/lib/mock-listings";
-import { mockTalentDetail } from "@/lib/mock-talent-detail";
+import {
+  listEditorChoicePackages,
+  listMostPopularPackages,
+  listRecentPackages,
+} from "@/lib/supabase/packages";
+import type { PackageWithTalent } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
 
-const copy: Record<Role, { featuredTitle: string; promoTitle: string; promoCta: string; promoHref: string }> = {
-  organizer: {
-    featuredTitle: "Most Popular Talents in Heart of Show",
-    promoTitle: "Are you looking for Talent for your Event?",
-    promoCta: "Create new Event",
-    promoHref: "/organizer/create",
-  },
-  talent: {
-    featuredTitle: "Most Popular Events in Heart of Show",
-    promoTitle: "Ready to find your next gig?",
-    promoCta: "Create new Package",
-    promoHref: "/talent/create",
-  },
-  agency: {
-    featuredTitle: "Most Popular Events in Heart of Show",
-    promoTitle: "Grow your roster with new bookings",
-    promoCta: "Create new Package",
-    promoHref: "/agency/create",
-  },
-};
+export function toCardData(pkg: PackageWithTalent) {
+  return {
+    id: pkg.id,
+    title: pkg.talent_name,
+    category: pkg.sub_category ? `${pkg.category} · ${pkg.sub_category}` : pkg.category,
+    priceMin: pkg.price_min_vnd,
+    priceMax: pkg.price_max_vnd,
+    currency: "VND" as const,
+  };
+}
 
-export function HomeContent({ role }: { role: Role }) {
-  const { featuredTitle, promoTitle, promoCta, promoHref } = copy[role];
-  // HomeContent is only ever rendered for role="organizer" — talent/agency use
-  // EventHomeContent instead, which is wired to real event data.
-  const detailHref = `/organizer/talents/${mockTalentDetail.slug}`;
+// HomeContent is only ever rendered for role="organizer" — talent/agency use
+// EventHomeContent instead, which is wired to real event data.
+export async function HomeContent({ role }: { role: Role }) {
+  const [mostPopular, editorChoice, recent] = await Promise.all([
+    listMostPopularPackages(10),
+    listEditorChoicePackages(10),
+    listRecentPackages(6),
+  ]);
 
   return (
     <div className="flex flex-col gap-14 py-8">
-      <CardCarousel title={featuredTitle} viewAllHref={`/${role}/discover`}>
-        {mockFeaturedListings.map((item) => (
-          <ListingCard key={item.id} data={item} href={detailHref} />
-        ))}
-      </CardCarousel>
+      {mostPopular.length > 0 && (
+        <CardCarousel title="Most Popular Talents in Heart of Show" viewAllHref={`/${role}/discover`}>
+          {mostPopular.map((pkg) => (
+            <ListingCard key={pkg.id} data={toCardData(pkg)} href={`/${role}/talents/${pkg.talent_slug}`} />
+          ))}
+        </CardCarousel>
+      )}
 
       <section className="grid grid-cols-1 gap-8 lg:grid-cols-[606px_1fr]">
         <div className="flex flex-col gap-4">
@@ -50,19 +49,31 @@ export function HomeContent({ role }: { role: Role }) {
             </Link>
           </div>
           <div className="flex flex-col gap-3">
-            {mockRecentListings.map((item) => (
-              <ListingRow key={item.id} data={item} />
-            ))}
+            {recent.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No packages yet.</p>
+            ) : (
+              recent.map((pkg) => <ListingRow key={pkg.id} data={toCardData(pkg)} />)
+            )}
           </div>
         </div>
-        <PromoCard title={promoTitle} ctaLabel={promoCta} ctaHref={promoHref} />
+        <PromoCard
+          title="Are you looking for Talent for your Event?"
+          ctaLabel="Create new Event"
+          ctaHref="/organizer/create"
+        />
       </section>
 
-      <CardCarousel title="Editor Choice" viewAllHref={`/${role}/discover`}>
-        {mockFeaturedListings.map((item) => (
-          <ListingCard key={`editor-${item.id}`} data={item} href={detailHref} />
-        ))}
-      </CardCarousel>
+      {editorChoice.length > 0 && (
+        <CardCarousel title="Editor Choice" viewAllHref={`/${role}/discover`}>
+          {editorChoice.map((pkg) => (
+            <ListingCard
+              key={`editor-${pkg.id}`}
+              data={toCardData(pkg)}
+              href={`/${role}/talents/${pkg.talent_slug}`}
+            />
+          ))}
+        </CardCarousel>
+      )}
     </div>
   );
 }

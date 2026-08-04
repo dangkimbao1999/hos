@@ -124,6 +124,9 @@ export interface PackageRow {
   price_max_vnd: number;
   payment_method: PaymentMethod;
   status: PackageStatus;
+  /** Manually curated by an admin directly in the database — no admin portal exists yet. */
+  is_most_popular: boolean;
+  is_editor_choice: boolean;
   created_at: string;
 }
 
