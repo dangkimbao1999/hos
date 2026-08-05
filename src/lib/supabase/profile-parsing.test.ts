@@ -55,4 +55,9 @@ describe("parseServices", () => {
   it("returns null for malformed JSON", () => {
     expect(parseServices("not json")).toBeNull();
   });
+
+  it("drops non-string entries instead of coercing them", () => {
+    const raw = JSON.stringify(["DJ Sets", null, 5, {}]);
+    expect(parseServices(raw)).toEqual(["DJ Sets"]);
+  });
 });

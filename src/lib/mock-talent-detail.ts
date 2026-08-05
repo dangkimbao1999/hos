@@ -22,7 +22,6 @@ export interface TalentDetail {
   tagline: string;
   bio: string;
   keywords: string[];
-  services: string[];
   packages: TalentPackage[];
   priceRangeVnd: { min: number; max: number };
   reviews: TalentReview[];
@@ -37,12 +36,6 @@ export const mockTalentDetail: TalentDetail = {
   tagline: "Rapper perfoms for music festival, bar, club and pub.",
   bio: "From sold-out festival stages to intimate club sets, A$AP Rocky brings a high-energy live show built around crowd interaction, tight choreography, and a full production rider. Every booking includes a pre-show sound check and a dedicated tour manager to coordinate logistics with your event team.",
   keywords: ["#A$APMob", "#Flacko", "#A$APRocky", "#PraiseTheLord", "#Rihanna"],
-  services: [
-    "Full sound & lighting rider provided on request",
-    "Dedicated tour manager for on-site coordination",
-    "Flexible set length from 30 to 90 minutes",
-    "Meet & greet add-on available for VIP packages",
-  ],
   packages: [
     { name: "Basic Package", type: "Fulltime", location: "Ho Chi Minh City" },
     { name: "Basic Package", type: "Fulltime", location: "Ho Chi Minh City" },

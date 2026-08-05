@@ -34,7 +34,7 @@ live "About Talent" tab supplied by the user.
 - Display wiring: Talent detail page (hero, gallery, About Talent tab) and
   the event page's "About Organizer" tab (fixed to show the organizer's
   actual profile, not the event's description)
-- Minimal test tooling (`vitest`) so this can be committed without
+- Minimal test tooling (`bun:test`) so this can be committed without
   disabling the repo's TDD commit hook
 
 ### Explicitly out of scope
@@ -182,10 +182,11 @@ not event data:
 
 ## Testing
 
-The repo currently has zero test files and no test runner (`vitest`/`jest`
-absent from `package.json`), and `.claude/hooks/tdd-enforce.sh` blocks
-`git commit` on any staged `.ts`/`.tsx` file lacking a sibling test. To
-land this work at all, this task adds a minimal `vitest` setup and covers
+The repo currently has zero test files and no test runner configured, and
+`.claude/hooks/tdd-enforce.sh` blocks `git commit` on any staged
+`.ts`/`.tsx` file lacking a sibling test. To land this work at all, this
+task adds a minimal test setup using Bun's built-in test runner
+(`bun:test`) with `happy-dom` and `@testing-library/react`, and covers
 the genuinely pure/testable logic:
 - Row parsing/validation for `socialLinks`, `achievements`, `services` in
   `updateProfile` (trim, drop empty rows, reject unknown platforms).

@@ -53,6 +53,8 @@ export async function updateProfile(
     }
   }
 
+  // Not role-restricted server-side — harmless for Organizer/Agency since no UI surface renders
+  // these Talent-only fields (achievements, services, dateOfBirth, genre) for those roles.
   const socialLinksRaw = formData.get("socialLinks");
   if (socialLinksRaw !== null) {
     const parsed = parseSocialLinks(socialLinksRaw);

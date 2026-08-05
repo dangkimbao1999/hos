@@ -98,11 +98,13 @@ describe("ProfileContent — thumbnail gallery", () => {
       <ProfileContent role="talent" profile={makeProfile({ gallery_urls: ["https://x/1.png"] })} />
     );
     expect(screen.getAllByAltText("")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Add thumbnail" })).toBeInTheDocument();
   });
 
   it("hides the upload slot once 5 images are present", () => {
     const urls = [1, 2, 3, 4, 5].map((n) => `https://x/${n}.png`);
     render(<ProfileContent role="talent" profile={makeProfile({ gallery_urls: urls })} />);
     expect(screen.getAllByAltText("")).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: "Add thumbnail" })).not.toBeInTheDocument();
   });
 });

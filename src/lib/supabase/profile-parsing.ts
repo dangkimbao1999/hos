@@ -34,5 +34,8 @@ export function parseAchievements(raw: FormDataEntryValue): Achievement[] | null
 export function parseServices(raw: FormDataEntryValue): string[] | null {
   const rows = parseJsonArray(raw);
   if (rows === null) return null;
-  return rows.map((v) => String(v).trim()).filter(Boolean);
+  return rows
+    .filter((v): v is string => typeof v === "string")
+    .map((v) => v.trim())
+    .filter(Boolean);
 }

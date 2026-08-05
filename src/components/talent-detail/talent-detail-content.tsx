@@ -130,8 +130,8 @@ export function TalentDetailContent({
                     Service Provided
                   </h3>
                   <div className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-md bg-white/5 p-6">
-                    {talent.services.map((service) => (
-                      <div key={service} className="flex items-start gap-3">
+                    {talent.services.map((service, index) => (
+                      <div key={`${service}-${index}`} className="flex items-start gap-3">
                         <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-500" />
                         <span className="text-sm text-foreground">{service}</span>
                       </div>
@@ -246,7 +246,7 @@ export function TalentDetailContent({
                     <div className="flex flex-col gap-1">
                       <span className="text-xs uppercase text-muted-foreground">DOB</span>
                       <span className="text-sm text-foreground">
-                        {new Date(talent.date_of_birth).toLocaleDateString("en-US", {
+                        {new Date(`${talent.date_of_birth}T00:00:00`).toLocaleDateString("en-US", {
                           day: "2-digit",
                           month: "long",
                           year: "numeric",
@@ -269,8 +269,8 @@ export function TalentDetailContent({
                     Service Provided
                   </h3>
                   <div className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-md bg-white/5 p-6">
-                    {talent.services.map((service) => (
-                      <div key={service} className="flex items-start gap-3">
+                    {talent.services.map((service, index) => (
+                      <div key={`${service}-${index}`} className="flex items-start gap-3">
                         <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-500" />
                         <span className="text-sm text-foreground">{service}</span>
                       </div>

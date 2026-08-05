@@ -345,6 +345,7 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
             {gallery.length < 5 && (
               <button
                 type="button"
+                aria-label="Add thumbnail"
                 onClick={() => galleryInputRef.current?.click()}
                 disabled={galleryPending}
                 className="flex aspect-square items-center justify-center rounded-[8px] bg-white/10 text-muted-foreground hover:bg-white/15"

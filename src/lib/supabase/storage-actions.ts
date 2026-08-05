@@ -97,11 +97,12 @@ export async function uploadGalleryImage(
   const kycError = await assertKycVerified(supabase, user.id);
   if (kycError) return kycError;
 
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("profiles")
     .select("gallery_urls")
     .eq("id", user.id)
     .single();
+  if (existingError) return { error: existingError.message };
   const current = existing?.gallery_urls ?? [];
   if (!canAddGalleryImage(current)) return { error: "You can upload at most 5 thumbnail images." };
 
@@ -149,11 +150,12 @@ export async function removeGalleryImage(
   const url = String(formData.get("url") ?? "");
   if (!url) return { error: "Missing image to remove." };
 
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("profiles")
     .select("gallery_urls")
     .eq("id", user.id)
     .single();
+  if (existingError) return { error: existingError.message };
   const current: string[] = existing?.gallery_urls ?? [];
   const nextGallery = current.filter((u) => u !== url);
 
