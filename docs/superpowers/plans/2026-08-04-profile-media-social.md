@@ -1929,7 +1929,7 @@ describe("TalentDetailContent — About Talent tab", () => {
         reviewSummary={reviewSummary}
       />
     );
-    fireEvent.click(screen.getByRole("tab", { name: "About Talent" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "About Talent" }));
     expect(screen.getByText("Instagram")).toBeInTheDocument();
     expect(screen.getByText("Harlem, New York, United State")).toBeInTheDocument();
     expect(screen.getByText("US/UK Hiphop/Rap")).toBeInTheDocument();
@@ -2366,7 +2366,7 @@ describe("EventDetailContent — About Organizer tab", () => {
         moreEvents={[]}
       />
     );
-    fireEvent.click(screen.getByRole("tab", { name: "About Organizer" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "About Organizer" }));
     expect(screen.getByText("The organizer's real bio.")).toBeInTheDocument();
     expect(screen.getByText("Instagram")).toBeInTheDocument();
     expect(screen.queryByText("The event's own description.")).not.toBeInTheDocument();
