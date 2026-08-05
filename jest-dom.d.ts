@@ -11,6 +11,7 @@ import type matchers from "@testing-library/jest-dom/matchers";
 // registered onto `expect` at runtime.
 export {};
 declare module "bun:test" {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface Matchers<T = unknown>
     extends matchers.TestingLibraryMatchers<ReturnType<typeof expect.stringContaining>, T> {}
 }
