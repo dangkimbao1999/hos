@@ -49,6 +49,7 @@ defect instead of a new feature.
 
 ## Running the suite
 
-<Fill in your actual test command, e.g. `bun test`, `npm test`, `pytest`,
-`go test ./...`.> Run the full area's suite before committing — not just
-the one test file you touched.
+Use `bun run test` or `bun test --isolate` — never bare `bun test`, since
+Bun's `mock.module()` leaks mocked modules across test files without
+`--isolate`. Run the full area's suite before committing — not just the
+one test file you touched.

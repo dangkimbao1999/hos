@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ImageIcon, MapPin } from "lucide-react";
+import { ImageIcon, Link as LinkIcon, MapPin } from "lucide-react";
 import { ApplyPanel } from "@/components/event-detail/apply-panel";
 import { CardCarousel } from "@/components/shell/card-carousel";
 import { EventListingCard } from "@/components/shell/event-listing-card";
@@ -98,24 +98,52 @@ export function EventDetailContent({
           )}
 
           {tab === "About Organizer" && (
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-bold tracking-[-0.03em] text-foreground">
-                {event.organizer.full_name || "Organizer"}
-              </h2>
-              <div className="flex flex-col gap-3 rounded-md bg-white/5 p-5">
-                {event.organizer.location && (
-                  <div className="flex items-center gap-3 text-sm text-foreground">
-                    <MapPin className="size-4 shrink-0 text-muted-foreground" />
-                    {event.organizer.location}
+            <div className="flex gap-6">
+              <div className="aspect-square w-[220px] shrink-0 overflow-hidden rounded-md bg-white/10">
+                {event.organizer.gallery_urls[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={event.organizer.gallery_urls[0]} alt="" className="size-full object-cover" />
+                ) : (
+                  <div className="flex size-full items-center justify-center text-muted-foreground">
+                    <ImageIcon className="size-8" />
                   </div>
                 )}
-                {event.contact_phone && (
-                  <div className="text-sm text-muted-foreground">Contact: {event.contact_phone}</div>
+              </div>
+              <div className="flex flex-1 flex-col gap-4">
+                <h2 className="text-xl font-bold tracking-[-0.03em] text-foreground">
+                  {event.organizer.full_name || "Organizer"}
+                </h2>
+                <div className="flex flex-col gap-3 rounded-md bg-white/5 p-5">
+                  {event.organizer.location && (
+                    <div className="flex items-center gap-3 text-sm text-foreground">
+                      <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                      {event.organizer.location}
+                    </div>
+                  )}
+                  {event.contact_phone && (
+                    <div className="text-sm text-muted-foreground">Contact: {event.contact_phone}</div>
+                  )}
+                </div>
+                {event.organizer.bio && (
+                  <p className="text-sm leading-relaxed text-muted-foreground">{event.organizer.bio}</p>
+                )}
+                {event.organizer.social_links.length > 0 && (
+                  <div className="flex flex-wrap gap-3">
+                    {event.organizer.social_links.map((link) => (
+                      <a
+                        key={`${link.platform}-${link.url}`}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm text-foreground hover:bg-white/10"
+                      >
+                        <LinkIcon className="size-4" />
+                        {link.platform}
+                      </a>
+                    ))}
+                  </div>
                 )}
               </div>
-              {event.description && (
-                <p className="text-sm leading-relaxed text-muted-foreground">{event.description}</p>
-              )}
             </div>
           )}
         </div>

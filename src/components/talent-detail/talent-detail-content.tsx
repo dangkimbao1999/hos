@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, CheckCircle2, ImageIcon } from "lucide-react";
+import { CalendarDays, CheckCircle2, ImageIcon, Link as LinkIcon } from "lucide-react";
 import { CardCarousel } from "@/components/shell/card-carousel";
 import { ListingCard } from "@/components/shell/listing-card";
 import { BookingPanel } from "@/components/talent-detail/booking-panel";
@@ -33,17 +33,22 @@ export function TalentDetailContent({
   reviewSummary: TalentReviewSummary;
 }) {
   const [tab, setTab] = useState<Tab>("Overview");
-  // Services/tagline/category have no real schema yet — kept as generic
-  // mock flavor text alongside the real name/bio/packages/reviews.
+  // Tagline/category have no real schema yet — kept as generic mock flavor
+  // text alongside the real name/bio/packages/reviews/media/social data.
   const mock = mockTalentDetail;
   const bio = talent.bio || mock.bio;
 
   return (
     <div className="flex flex-col gap-6 py-8">
       <div className="relative flex h-[280px] w-full flex-col justify-end overflow-hidden rounded-md">
-        <div className="absolute inset-0 flex items-center justify-center bg-white/10 text-muted-foreground">
-          <ImageIcon className="size-10" />
-        </div>
+        {talent.cover_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={talent.cover_url} alt="" className="absolute inset-0 size-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/10 text-muted-foreground">
+            <ImageIcon className="size-10" />
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
         <div className="relative flex flex-col gap-1 p-8">
           <h1 className="text-4xl font-bold tracking-[-0.03em] text-white">{talent.full_name}</h1>
@@ -79,18 +84,26 @@ export function TalentDetailContent({
 
               <div className="flex flex-col gap-3">
                 <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-md bg-white/10 text-muted-foreground">
-                  <ImageIcon className="size-10" />
+                  {talent.gallery_urls[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={talent.gallery_urls[0]} alt="" className="size-full object-cover" />
+                  ) : (
+                    <ImageIcon className="size-10" />
+                  )}
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      className="flex aspect-video items-center justify-center overflow-hidden rounded-md bg-white/10 text-muted-foreground"
-                    >
-                      <ImageIcon className="size-6" />
-                    </div>
-                  ))}
-                </div>
+                {talent.gallery_urls.length > 1 && (
+                  <div className="grid grid-cols-3 gap-3">
+                    {talent.gallery_urls.slice(1, 4).map((url) => (
+                      <div
+                        key={url}
+                        className="flex aspect-video items-center justify-center overflow-hidden rounded-md bg-white/10 text-muted-foreground"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="" className="size-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <p className="text-sm leading-relaxed text-muted-foreground">{bio}</p>
@@ -111,19 +124,21 @@ export function TalentDetailContent({
                 </div>
               )}
 
-              <div className="flex flex-col gap-4">
-                <h3 className="text-xl font-bold tracking-[-0.03em] text-foreground">
-                  Service Provided
-                </h3>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-md bg-white/5 p-6">
-                  {mock.services.map((service) => (
-                    <div key={service} className="flex items-start gap-3">
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-500" />
-                      <span className="text-sm text-foreground">{service}</span>
-                    </div>
-                  ))}
+              {talent.services.length > 0 && (
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-xl font-bold tracking-[-0.03em] text-foreground">
+                    Service Provided
+                  </h3>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-md bg-white/5 p-6">
+                    {talent.services.map((service, index) => (
+                      <div key={`${service}-${index}`} className="flex items-start gap-3">
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-500" />
+                        <span className="text-sm text-foreground">{service}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <CardCarousel title="More Related Talents" viewAllHref="/organizer/discover">
                 {mockFeaturedListings.map((item) => (
@@ -204,20 +219,84 @@ export function TalentDetailContent({
                   About {talent.full_name}
                 </h2>
                 <p className="text-sm leading-relaxed text-muted-foreground">{bio}</p>
-              </div>
-              <div className="flex flex-col gap-4">
-                <h3 className="text-xl font-bold tracking-[-0.03em] text-foreground">
-                  Service Provided
-                </h3>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-md bg-white/5 p-6">
-                  {mock.services.map((service) => (
-                    <div key={service} className="flex items-start gap-3">
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-500" />
-                      <span className="text-sm text-foreground">{service}</span>
+                {talent.social_links.length > 0 && (
+                  <div className="flex flex-wrap gap-3">
+                    {talent.social_links.map((link) => (
+                      <a
+                        key={`${link.platform}-${link.url}`}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm text-foreground hover:bg-white/10"
+                      >
+                        <LinkIcon className="size-4" />
+                        {link.platform}
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-8">
+                  {talent.location && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs uppercase text-muted-foreground">Location</span>
+                      <span className="text-sm text-foreground">{talent.location}</span>
                     </div>
-                  ))}
+                  )}
+                  {talent.date_of_birth && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs uppercase text-muted-foreground">DOB</span>
+                      <span className="text-sm text-foreground">
+                        {new Date(`${talent.date_of_birth}T00:00:00`).toLocaleDateString("en-US", {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {talent.genre && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs uppercase text-muted-foreground">Genre</span>
+                      <span className="text-sm text-foreground">{talent.genre}</span>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {talent.services.length > 0 && (
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-xl font-bold tracking-[-0.03em] text-foreground">
+                    Service Provided
+                  </h3>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-4 rounded-md bg-white/5 p-6">
+                    {talent.services.map((service, index) => (
+                      <div key={`${service}-${index}`} className="flex items-start gap-3">
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-500" />
+                        <span className="text-sm text-foreground">{service}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {talent.achievements.length > 0 && (
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-xl font-bold tracking-[-0.03em] text-foreground">Achievement</h3>
+                  <div className="flex flex-col gap-3 rounded-md bg-white/5 p-6">
+                    {talent.achievements.map((item, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-500" />
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-foreground">{item.title}</span>
+                          {item.subtitle && (
+                            <span className="text-xs text-muted-foreground">{item.subtitle}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

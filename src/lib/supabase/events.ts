@@ -14,13 +14,17 @@ export async function getEventBySlug(slug: string): Promise<EventWithSlots | nul
 
   const [{ data: slots }, { data: organizer }] = await Promise.all([
     supabase.from("event_slots").select("*").eq("event_id", event.id).order("created_at"),
-    supabase.from("profiles").select("full_name, location").eq("id", event.organizer_id).single(),
+    supabase
+      .from("profiles")
+      .select("full_name, location, bio, gallery_urls, social_links")
+      .eq("id", event.organizer_id)
+      .single(),
   ]);
 
   return {
     ...event,
     slots: slots ?? [],
-    organizer: organizer ?? { full_name: "", location: null },
+    organizer: organizer ?? { full_name: "", location: null, bio: null, gallery_urls: [], social_links: [] },
   };
 }
 
