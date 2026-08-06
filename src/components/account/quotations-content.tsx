@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { QuotationWithNames } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
+import { runAction } from "@/lib/toast-action";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-amber-500/10 text-amber-500",
@@ -36,10 +37,14 @@ export function QuotationsContent({ role, quotations }: { role: Role; quotations
   const [respondTarget, setRespondTarget] = useState<QuotationWithNames | null>(null);
   const isTalent = role === "talent";
 
-  async function handle(action: () => Promise<{ error: string } | { success: true }>, id: string) {
+  async function handle(
+    action: () => Promise<{ error: string } | { success: true }>,
+    id: string,
+    successMessage: string
+  ) {
     setError(undefined);
     setPendingId(id);
-    const result = await action();
+    const result = await runAction(action(), { success: successMessage });
     setPendingId(undefined);
     if ("error" in result) {
       setError(result.error);
@@ -96,7 +101,7 @@ export function QuotationsContent({ role, quotations }: { role: Role; quotations
                     <button
                       type="button"
                       disabled={pendingId === q.id}
-                      onClick={() => handle(() => declineQuotation(q.id), q.id)}
+                      onClick={() => handle(() => declineQuotation(q.id), q.id, "Quotation declined.")}
                       className="rounded-[6px] bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/10"
                     >
                       Decline
@@ -115,7 +120,7 @@ export function QuotationsContent({ role, quotations }: { role: Role; quotations
                     <button
                       type="button"
                       disabled={pendingId === q.id}
-                      onClick={() => handle(() => rejectQuotation(q.id), q.id)}
+                      onClick={() => handle(() => rejectQuotation(q.id), q.id, "Quotation rejected.")}
                       className="rounded-[6px] bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/10"
                     >
                       Reject
@@ -123,7 +128,7 @@ export function QuotationsContent({ role, quotations }: { role: Role; quotations
                     <button
                       type="button"
                       disabled={pendingId === q.id}
-                      onClick={() => handle(() => acceptQuotation(q.id), q.id)}
+                      onClick={() => handle(() => acceptQuotation(q.id), q.id, "Quotation accepted.")}
                       className="rounded-[6px] bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                     >
                       Accept
@@ -173,7 +178,7 @@ function RespondDialog({
     formData.set("quotationId", quotation.id);
     formData.set("quotedPriceVnd", price);
     formData.set("talentNote", note);
-    const result = await respondToQuotation(formData);
+    const result = await runAction(respondToQuotation(formData), { success: "Quote sent." });
     setPending(false);
     if ("error" in result) {
       setError(result.error);

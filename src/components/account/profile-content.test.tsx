@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
+const toastCalls: { type: "error" | "success"; message: string }[] = [];
+mock.module("sonner", () => ({
+  toast: {
+    error: (message: string) => toastCalls.push({ type: "error", message }),
+    success: (message: string) => toastCalls.push({ type: "success", message }),
+  },
+}));
+
 mock.module("next/navigation", () => ({
   useRouter: () => ({ refresh: () => {} }),
 }));
@@ -19,7 +27,10 @@ mock.module("@/lib/supabase/storage-actions", () => ({
 import { ProfileContent } from "@/components/account/profile-content";
 import type { CurrentUser } from "@/lib/supabase/types";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  toastCalls.length = 0;
+});
 
 function makeProfile(overrides: Partial<CurrentUser> = {}): CurrentUser {
   return {
@@ -106,5 +117,14 @@ describe("ProfileContent — thumbnail gallery", () => {
     render(<ProfileContent role="talent" profile={makeProfile({ gallery_urls: urls })} />);
     expect(screen.getAllByAltText("")).toHaveLength(5);
     expect(screen.queryByRole("button", { name: "Add thumbnail" })).not.toBeInTheDocument();
+  });
+});
+
+describe("ProfileContent — toasts", () => {
+  it("shows a success toast when Save changes succeeds", async () => {
+    render(<ProfileContent role="talent" profile={makeProfile()} />);
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(toastCalls).toContainEqual({ type: "success", message: "Profile updated." });
   });
 });

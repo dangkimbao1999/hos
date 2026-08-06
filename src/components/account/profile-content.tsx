@@ -13,6 +13,7 @@ import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
 import { updateProfile } from "@/lib/supabase/profile-actions";
 import { removeGalleryImage, uploadAvatar, uploadCover, uploadGalleryImage } from "@/lib/supabase/storage-actions";
 import type { CurrentUser } from "@/lib/supabase/types";
+import { runAction } from "@/lib/toast-action";
 import { cn } from "@/lib/utils";
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
@@ -32,21 +33,16 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
   const [keywords, setKeywords] = useState<string[]>(profile.keywords ?? []);
   const [keywordInput, setKeywordInput] = useState("");
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-  const [saved, setSaved] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
   const [avatarPending, setAvatarPending] = useState(false);
-  const [avatarError, setAvatarError] = useState<string | undefined>();
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [coverUrl, setCoverUrl] = useState(profile.cover_url);
   const [coverPending, setCoverPending] = useState(false);
-  const [coverError, setCoverError] = useState<string | undefined>();
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   const [gallery, setGallery] = useState<string[]>(profile.gallery_urls ?? []);
   const [galleryPending, setGalleryPending] = useState(false);
-  const [galleryError, setGalleryError] = useState<string | undefined>();
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [socialLinks, setSocialLinks] = useState<{ platform: string; url: string }[]>(
@@ -60,14 +56,12 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarError(undefined);
     setAvatarPending(true);
     const formData = new FormData();
     formData.set("avatar", file);
-    const result = await uploadAvatar(formData);
+    const result = await runAction(uploadAvatar(formData), { success: "Avatar updated." });
     setAvatarPending(false);
-    if ("error" in result) setAvatarError(result.error);
-    else {
+    if (!("error" in result)) {
       setAvatarUrl(result.url);
       router.refresh();
     }
@@ -77,14 +71,12 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
   async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCoverError(undefined);
     setCoverPending(true);
     const formData = new FormData();
     formData.set("cover", file);
-    const result = await uploadCover(formData);
+    const result = await runAction(uploadCover(formData), { success: "Cover updated." });
     setCoverPending(false);
-    if ("error" in result) setCoverError(result.error);
-    else {
+    if (!("error" in result)) {
       setCoverUrl(result.url);
       router.refresh();
     }
@@ -94,14 +86,12 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
   async function handleGalleryChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setGalleryError(undefined);
     setGalleryPending(true);
     const formData = new FormData();
     formData.set("image", file);
-    const result = await uploadGalleryImage(formData);
+    const result = await runAction(uploadGalleryImage(formData), { success: "Image uploaded." });
     setGalleryPending(false);
-    if ("error" in result) setGalleryError(result.error);
-    else {
+    if (!("error" in result)) {
       setGallery((g) => [...g, result.url]);
       router.refresh();
     }
@@ -109,14 +99,12 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
   }
 
   async function handleRemoveGalleryImage(url: string) {
-    setGalleryError(undefined);
     setGalleryPending(true);
     const formData = new FormData();
     formData.set("url", url);
-    const result = await removeGalleryImage(formData);
+    const result = await runAction(removeGalleryImage(formData), { success: "Image removed." });
     setGalleryPending(false);
-    if ("error" in result) setGalleryError(result.error);
-    else {
+    if (!("error" in result)) {
       setGallery((g) => g.filter((u) => u !== url));
       router.refresh();
     }
@@ -124,18 +112,14 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(undefined);
-    setSaved(false);
     setPending(true);
     const formData = new FormData(e.currentTarget);
     formData.set("keywords", JSON.stringify(keywords));
     formData.set("socialLinks", JSON.stringify(socialLinks));
     formData.set("achievements", JSON.stringify(achievements));
     formData.set("services", JSON.stringify(services));
-    const result = await updateProfile(formData);
+    await runAction(updateProfile(formData), { success: "Profile updated." });
     setPending(false);
-    if ("error" in result) setError(result.error);
-    else setSaved(true);
   }
 
   function addKeyword() {
@@ -177,8 +161,6 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex items-center justify-end gap-3">
-        {error && <span className="text-sm text-destructive">{error}</span>}
-        {saved && !error && <span className="text-sm text-muted-foreground">Saved.</span>}
         <Button asChild type="button" variant="secondary" className="h-9 rounded-[6px]">
           <Link href={`/${role}/kyc`}>
             <ShieldCheck className="size-4" />
@@ -254,13 +236,9 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
             <span className="text-sm text-muted-foreground">
               {avatarPending
                 ? "Uploading..."
-                : avatarError
-                  ? avatarError
-                  : coverPending
-                    ? "Uploading cover..."
-                    : coverError
-                      ? coverError
-                      : "Manage your profile information, password and more"}
+                : coverPending
+                  ? "Uploading cover..."
+                  : "Manage your profile information, password and more"}
             </span>
           </div>
         </div>
@@ -327,7 +305,6 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
         </div>
         <div className="flex flex-col gap-2">
           <Label className="text-sm text-muted-foreground">Thumbnail Image</Label>
-          {galleryError && <span className="text-xs text-destructive">{galleryError}</span>}
           <div className="grid grid-cols-5 gap-3">
             {gallery.map((url) => (
               <div key={url} className="group relative aspect-square overflow-hidden rounded-[8px] bg-white/10">
