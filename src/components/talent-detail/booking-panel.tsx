@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { addToCart } from "@/lib/supabase/package-actions";
 import type { PackageRow } from "@/lib/supabase/types";
+import { runAction } from "@/lib/toast-action";
 
 function formatVnd(amount: number) {
   return `${amount.toLocaleString("en-US")} VND`;
@@ -69,7 +70,7 @@ export function BookingPanel({
     formData.set("priceVnd", String(selectedPkg.price_min_vnd));
     formData.set("bookedDate", bookedDate);
     formData.set("bookedTime", bookedTime);
-    const result = await addToCart(formData);
+    const result = await runAction(addToCart(formData), { success: "Added to cart." });
     setPending(false);
     if ("error" in result) {
       setError(result.error);

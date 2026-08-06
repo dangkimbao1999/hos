@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { checkoutCart, removeFromCart } from "@/lib/supabase/package-actions";
 import type { CartItemWithPackage } from "@/lib/supabase/types";
+import { runAction } from "@/lib/toast-action";
 
 function formatVnd(amount: number) {
   return `${amount.toLocaleString("en-US")} VND`;
@@ -47,7 +48,8 @@ export function CheckoutContent({ cartItems }: { cartItems: CartItemWithPackage[
   }
 
   async function handleRemove(id: string) {
-    await removeFromCart(id);
+    const result = await runAction(removeFromCart(id), { success: "Removed from cart." });
+    if ("error" in result) return;
     router.refresh();
   }
 
@@ -67,7 +69,7 @@ export function CheckoutContent({ cartItems }: { cartItems: CartItemWithPackage[
     for (const id of Object.keys(checked).filter((id) => checked[id])) {
       formData.append("itemIds", id);
     }
-    const result = await checkoutCart(formData);
+    const result = await runAction(checkoutCart(formData), { success: "Booking request sent." });
     setPending(false);
     if ("error" in result) {
       setError(result.error);

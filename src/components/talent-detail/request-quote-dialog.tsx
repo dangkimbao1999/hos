@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { requestQuotation } from "@/lib/supabase/quotation-actions";
+import { runAction } from "@/lib/toast-action";
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
@@ -32,7 +33,7 @@ export function RequestQuoteDialog({ talentId, talentName }: { talentId: string;
     setPending(true);
     const formData = new FormData(e.currentTarget);
     formData.set("talentId", talentId);
-    const result = await requestQuotation(formData);
+    const result = await runAction(requestQuotation(formData), { success: "Quote request sent." });
     setPending(false);
     if ("error" in result) {
       setError(result.error);

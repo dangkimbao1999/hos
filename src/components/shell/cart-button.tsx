@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { removeFromCart } from "@/lib/supabase/package-actions";
 import type { CartItemWithPackage } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
+import { runAction } from "@/lib/toast-action";
 
 function formatVnd(n: number) {
   return `${n.toLocaleString("en-US")} VND`;
@@ -27,7 +28,8 @@ export function CartButton({ role, cartItems = [] }: { role: Role; cartItems?: C
   const count = cartItems.length;
 
   async function handleRemove(itemId: string) {
-    await removeFromCart(itemId);
+    const result = await runAction(removeFromCart(itemId), { success: "Removed from cart." });
+    if ("error" in result) return;
     router.refresh();
   }
 
