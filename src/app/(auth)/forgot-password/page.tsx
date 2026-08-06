@@ -9,6 +9,7 @@ import { FormField } from "@/components/auth/form-field";
 import { PasswordField } from "@/components/auth/password-field";
 import { Button } from "@/components/ui/button";
 import { requestPasswordReset, updatePassword } from "@/lib/supabase/actions";
+import { runAction } from "@/lib/toast-action";
 
 type Step = "request" | "check-email" | "reset" | "success";
 
@@ -33,7 +34,9 @@ function ForgotPasswordForm() {
       e.preventDefault();
       setError(undefined);
       setPending(true);
-      const result = await requestPasswordReset(new FormData(e.currentTarget));
+      const result = await runAction(requestPasswordReset(new FormData(e.currentTarget)), {
+        success: "Reset link sent.",
+      });
       setPending(false);
       if ("error" in result) {
         setError(result.error);
@@ -81,7 +84,9 @@ function ForgotPasswordForm() {
       e.preventDefault();
       setError(undefined);
       setPending(true);
-      const result = await updatePassword(new FormData(e.currentTarget));
+      const result = await runAction(updatePassword(new FormData(e.currentTarget)), {
+        success: "Password updated.",
+      });
       setPending(false);
       if ("error" in result) {
         setError(result.error);

@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { signIn } from "@/lib/supabase/actions";
 import { createClient } from "@/lib/supabase/client";
+import { runAction } from "@/lib/toast-action";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
@@ -23,7 +24,7 @@ export default function SignInPage() {
     e.preventDefault();
     setError(undefined);
     setPending(true);
-    const result = await signIn(new FormData(e.currentTarget));
+    const result = await runAction(signIn(new FormData(e.currentTarget)));
     setPending(false);
     if (result?.error) setError(result.error);
   }

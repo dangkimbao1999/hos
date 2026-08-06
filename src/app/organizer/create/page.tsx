@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { talentCategories } from "@/lib/nav-items";
 import { createEvent } from "@/lib/supabase/event-actions";
+import { runAction } from "@/lib/toast-action";
 
 const STEPS = ["Event Details", "Add Photos", "Review & Budget"] as const;
 type Step = (typeof STEPS)[number];
@@ -118,7 +119,7 @@ export default function CreateEventPage() {
       )
     );
 
-    const result = await createEvent(formData);
+    const result = await runAction(createEvent(formData), { success: "Event created." });
     setPending(false);
     if ("error" in result) {
       setError(result.error);

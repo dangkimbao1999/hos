@@ -52,7 +52,9 @@ export async function HomeContent({ role }: { role: Role }) {
             {recent.length === 0 ? (
               <p className="text-sm text-muted-foreground">No packages yet.</p>
             ) : (
-              recent.map((pkg) => <ListingRow key={pkg.id} data={toCardData(pkg)} />)
+              recent.map((pkg) => (
+                <ListingRow key={pkg.id} data={toCardData(pkg)} href={`/${role}/talents/${pkg.talent_slug}`} />
+              ))
             )}
           </div>
         </div>

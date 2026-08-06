@@ -19,6 +19,7 @@ import { talentCategories, type Role } from "@/lib/nav-items";
 import { mockRoster, mockRosterByCategory } from "@/lib/mock-roster";
 import { createPackage, updatePackage } from "@/lib/supabase/package-actions";
 import type { PackageRow } from "@/lib/supabase/types";
+import { runAction } from "@/lib/toast-action";
 
 type Step = "choose-talent" | "form" | "success";
 
@@ -110,7 +111,9 @@ export function CreatePackageDialog({
     formData.set("repeatDays", selectedDays.join(","));
     formData.set("paymentMethod", paymentMethod);
 
-    const result = isEditing ? await updatePackage(editingPackage.id, formData) : await createPackage(formData);
+    const result = isEditing
+      ? await runAction(updatePackage(editingPackage.id, formData), { success: "Package updated." })
+      : await runAction(createPackage(formData), { success: "Package created." });
     setPending(false);
     if ("error" in result) {
       setError(result.error);

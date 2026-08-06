@@ -21,6 +21,7 @@ import { mockPackages } from "@/lib/mock-account";
 import { deletePackage } from "@/lib/supabase/package-actions";
 import type { Role } from "@/lib/nav-items";
 import type { PackageRow } from "@/lib/supabase/types";
+import { runAction } from "@/lib/toast-action";
 
 const statusStyles: Record<string, string> = {
   Active: "text-green-500",
@@ -60,7 +61,7 @@ export function PackagesContent({
     if (!confirm("Delete this package? This can't be undone.")) return;
     setDeleteError(null);
     setDeletingId(id);
-    const result = await deletePackage(id);
+    const result = await runAction(deletePackage(id), { success: "Package deleted." });
     setDeletingId(null);
     if ("error" in result) {
       setDeleteError(result.error);
@@ -164,6 +165,7 @@ export function PackagesContent({
                     </button>
                     <button
                       type="button"
+                      aria-label="Delete package"
                       disabled={!packageById.has(pkg.id) || deletingId === pkg.id}
                       onClick={() => handleDelete(pkg.id)}
                       className="flex size-8 items-center justify-center rounded-full bg-white/5 text-muted-foreground hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"

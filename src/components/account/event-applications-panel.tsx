@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { acceptApplication, rejectApplication } from "@/lib/supabase/event-actions";
 import { ReviewDialog } from "@/components/shared/review-dialog";
 import type { EventApplicationWithDetails } from "@/lib/supabase/types";
+import { runAction } from "@/lib/toast-action";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-amber-500/10 text-amber-500",
@@ -34,7 +35,9 @@ export function EventApplicationsPanel({
   async function handle(action: "accept" | "reject", id: string) {
     setError(undefined);
     setPendingId(id);
-    const result = action === "accept" ? await acceptApplication(id) : await rejectApplication(id);
+    const result = await runAction(action === "accept" ? acceptApplication(id) : rejectApplication(id), {
+      success: action === "accept" ? "Application accepted." : "Application rejected.",
+    });
     setPendingId(undefined);
     if ("error" in result) {
       setError(result.error);

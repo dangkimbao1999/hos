@@ -9,6 +9,7 @@ import { acceptBooking, rejectBooking } from "@/lib/supabase/package-actions";
 import { ReviewDialog } from "@/components/shared/review-dialog";
 import type { BookingWithNames } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
+import { runAction } from "@/lib/toast-action";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -83,7 +84,9 @@ export function OrdersContent({
   async function handle(action: "accept" | "reject", id: string) {
     setError(undefined);
     setPendingId(id);
-    const result = action === "accept" ? await acceptBooking(id) : await rejectBooking(id);
+    const result = await runAction(action === "accept" ? acceptBooking(id) : rejectBooking(id), {
+      success: action === "accept" ? "Booking accepted." : "Booking rejected.",
+    });
     setPendingId(undefined);
     if ("error" in result) {
       setError(result.error);
