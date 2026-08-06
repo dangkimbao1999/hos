@@ -133,9 +133,9 @@ function ImagePlaceholder({ className }: { className?: string }) {
  * Placeholder for the compact list-row card ("Frame 106"–"Frame 111" instances,
  * unresolved due to MCP rate limit — verify against Figma once access is available).
  */
-export function ListingRow({ data }: { data: ListingCardData }) {
-  return (
-    <div className="flex h-[76px] w-full items-center gap-4 rounded-md bg-white/5 px-3">
+export function ListingRow({ data, href }: { data: ListingCardData; href?: string }) {
+  const content = (
+    <>
       <ImagePlaceholder className="size-[52px] shrink-0 rounded-[6px]" />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-medium text-foreground">{data.title}</span>
@@ -146,6 +146,18 @@ export function ListingRow({ data }: { data: ListingCardData }) {
           ? `${data.priceMin.toLocaleString("en-US")}+ VND`
           : `$${data.priceMin.toLocaleString()}+`}
       </span>
-    </div>
+    </>
   );
+
+  const className = "flex h-[76px] w-full items-center gap-4 rounded-md bg-white/5 px-3";
+
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
 }
