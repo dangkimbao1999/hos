@@ -157,7 +157,7 @@ returns the same value.
 | `src/components/checkout/checkout-content.tsx` | `removeFromCart`, `checkoutCart` | "Removed from cart." / "Order placed." |
 | `src/components/create-package/create-package-dialog.tsx` | `createPackage`, `updatePackage` | "Package created." / "Package updated." |
 | `src/components/event-detail/apply-dialog.tsx` | `applyToSlot` | "Application submitted." |
-| `src/components/kyc/kyc-wizard.tsx` | `submitKyc` | "KYC submission received." |
+| `src/components/kyc/kyc-wizard.tsx` | `submitKyc`, `uploadKycDocument` (5 document slots via a shared `uploadSlotHandler` factory) | "KYC submission received." / "Document uploaded." |
 | `src/components/shared/review-dialog.tsx` | `submitReview` | "Review submitted." |
 | `src/components/shell/cart-button.tsx` | `removeFromCart` | "Removed from cart." |
 | `src/components/shell/notification-button.tsx` | `markNotificationsRead` | — (silent success is fine; error still toasts) |
@@ -181,9 +181,15 @@ convention (established in the previous PR):
   `listing-card.test.tsx` today only covers the pure `formatPriceRange`
   helper, not `ListingCard`'s own href-wrapping behavior — there's no
   existing precedent test to mirror, so this is a fresh test file.)
-- Retrofitted call sites are not individually re-tested for toast behavior
-  beyond what the shared `runAction` unit tests already cover — re-verifying
-  30 call sites' UI wiring by hand would be disproportionate; the
-  mechanical nature of the change (swap one function call, same control
-  flow) is the risk-reducer here, not per-site tests. Each file's *existing*
-  tests (where present) must still pass unchanged.
+- **Correction from initial scoping**: only 1 of the 18 retrofitted files
+  (`profile-content.tsx`) currently has a test file. This repo's
+  `tdd-enforce.sh` commit hook blocks staging any `.ts`/`.tsx` file that
+  lacks a sibling test — so the other 17 files each need a new test file
+  regardless, not as extra rigor but as a hard requirement to commit at
+  all. Given that, each retrofitted file gets one targeted RTL test that
+  mocks the relevant action(s) and `sonner`, triggers the mutating action,
+  and asserts `toast.success`/`toast.error` fired with the expected
+  message — this directly tests what changed (the retrofit itself) rather
+  than being a disconnected smoke test, and doesn't re-litigate `runAction`'s
+  own already-covered branch logic. Each file's *existing* tests (where
+  present) must still pass unchanged.
