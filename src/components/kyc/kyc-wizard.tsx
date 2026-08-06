@@ -10,6 +10,7 @@ import { StepIndicator } from "@/components/shared/step-indicator";
 import { UploadSlot } from "@/components/shared/upload-slot";
 import { submitKyc } from "@/lib/supabase/kyc-actions";
 import { uploadKycDocument } from "@/lib/supabase/storage-actions";
+import { runAction } from "@/lib/toast-action";
 import type { Role } from "@/lib/nav-items";
 
 interface UploadState {
@@ -89,7 +90,7 @@ export function KycWizard({ role }: { role: Role }) {
       const formData = new FormData();
       formData.set("file", file);
       formData.set("docType", docType);
-      const result = await uploadKycDocument(formData);
+      const result = await runAction(uploadKycDocument(formData), { success: "Document uploaded." });
       if ("error" in result) setSlot({ path: null, pending: false, error: result.error });
       else setSlot({ path: result.path, pending: false });
     };
@@ -127,7 +128,7 @@ export function KycWizard({ role }: { role: Role }) {
       formData.set("selfiePath", selfie.path ?? "");
     }
 
-    const result = await submitKyc(formData);
+    const result = await runAction(submitKyc(formData), { success: "KYC submission received." });
     setPending(false);
     if ("error" in result) {
       setError(result.error);

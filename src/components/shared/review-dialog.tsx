@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { submitReview } from "@/lib/supabase/review-actions";
+import { runAction } from "@/lib/toast-action";
 import { cn } from "@/lib/utils";
 
 export function ReviewDialog({
@@ -36,7 +37,7 @@ export function ReviewDialog({
     formData.set("sourceId", sourceId);
     formData.set("rating", String(rating));
     formData.set("comment", comment);
-    const result = await submitReview(formData);
+    const result = await runAction(submitReview(formData), { success: "Review submitted." });
     setPending(false);
     if ("error" in result) {
       setError(result.error);

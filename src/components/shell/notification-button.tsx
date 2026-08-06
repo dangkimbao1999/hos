@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bell, CreditCard, User } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { markNotificationsRead } from "@/lib/supabase/notification-actions";
+import { runAction } from "@/lib/toast-action";
 import type { NotificationItem } from "@/lib/supabase/types";
 
 const PERSON_KINDS = new Set([
@@ -21,7 +22,7 @@ export function NotificationButton({ notifications }: { notifications: Notificat
   async function handleOpenChange(open: boolean) {
     if (open && hasUnread) {
       setItems((prev) => prev.map((n) => ({ ...n, unread: false })));
-      await markNotificationsRead();
+      await runAction(markNotificationsRead());
     }
   }
 
