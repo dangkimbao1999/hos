@@ -154,7 +154,7 @@ returns the same value.
 | `src/components/account/packages-content.tsx` | `deletePackage` | "Package deleted." |
 | `src/components/account/profile-content.tsx` | `updateProfile`, `uploadAvatar`, `uploadCover`, `uploadGalleryImage`, `removeGalleryImage` | "Profile updated." / "Avatar updated." / "Cover updated." / "Image uploaded." / "Image removed." |
 | `src/components/account/quotations-content.tsx` | `respondToQuotation`, `declineQuotation`, `rejectQuotation`, `acceptQuotation` | "Quote sent." / "Quotation declined." / "Quotation rejected." / "Quotation accepted." |
-| `src/components/checkout/checkout-content.tsx` | `removeFromCart`, `checkoutCart` | "Removed from cart." / "Order placed." |
+| `src/components/checkout/checkout-content.tsx` | `removeFromCart`, `checkoutCart` | "Removed from cart." / "Booking request sent." |
 | `src/components/create-package/create-package-dialog.tsx` | `createPackage`, `updatePackage` | "Package created." / "Package updated." |
 | `src/components/event-detail/apply-dialog.tsx` | `applyToSlot` | "Application submitted." |
 | `src/components/kyc/kyc-wizard.tsx` | `submitKyc`, `uploadKycDocument` (5 document slots via a shared `uploadSlotHandler` factory) | "KYC submission received." / "Document uploaded." |
@@ -176,11 +176,11 @@ convention (established in the previous PR):
   `mock.module("sonner", ...)` to verify it calls `toast.error`/`toast.success`
   correctly for the error/success/no-success-message cases, and always
   returns the original result unchanged.
-- The `ListingRow` href fix gets a new RTL test confirming it renders an
-  anchor when `href` is passed and a plain div when it isn't. (Checked:
-  `listing-card.test.tsx` today only covers the pure `formatPriceRange`
-  helper, not `ListingCard`'s own href-wrapping behavior — there's no
-  existing precedent test to mirror, so this is a fresh test file.)
+- The `ListingRow` href fix gets new RTL tests appended to the *existing*
+  `listing-card.test.tsx` (both `ListingRow` and `ListingCard` live in
+  `listing-card.tsx`, so that's already the correct sibling test file —
+  it just doesn't cover this behavior yet, only the pure `formatPriceRange`
+  helper).
 - **Correction from initial scoping**: only 1 of the 18 retrofitted files
   (`profile-content.tsx`) currently has a test file. This repo's
   `tdd-enforce.sh` commit hook blocks staging any `.ts`/`.tsx` file that
