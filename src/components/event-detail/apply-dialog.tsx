@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { formatEventDay, formatTimeRange } from "@/lib/format";
 import { applyToSlot } from "@/lib/supabase/event-actions";
 import type { EventSlotRow, EventWithSlots } from "@/lib/supabase/types";
+import { runAction } from "@/lib/toast-action";
 import type { Role } from "@/lib/nav-items";
 import { mockRoster, mockRosterByCategory } from "@/lib/mock-roster";
 
@@ -49,7 +50,7 @@ export function ApplyDialog({
     const formData = new FormData();
     formData.set("slotId", slot.id);
     if (offerAmount) formData.set("offerAmountUsd", offerAmount);
-    const result = await applyToSlot(formData);
+    const result = await runAction(applyToSlot(formData), { success: "Application submitted." });
     setPending(false);
     if ("error" in result) {
       setError(result.error);
