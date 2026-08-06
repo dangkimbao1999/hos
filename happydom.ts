@@ -11,4 +11,4 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 // are hoisted above a file's own statements, so keeping the jest-dom
 // matchers import out of this file (and out of anything imported here) is
 // what guarantees the ordering.
-GlobalRegistrator.register();
+GlobalRegistrator.register({ url: "http://localhost/" });

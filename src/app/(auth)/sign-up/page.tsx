@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { resendSignUpEmail, signUp } from "@/lib/supabase/actions";
+import { runAction } from "@/lib/toast-action";
 import type { Role } from "@/lib/nav-items";
 
 type Step = "account-type" | "details" | "success";
@@ -81,7 +82,9 @@ export default function SignUpPage() {
       setPending(true);
       const formData = new FormData(e.currentTarget);
       formData.set("role", accountType);
-      const result = await signUp(formData);
+      const result = await runAction(signUp(formData), {
+        success: "Account created — check your email to confirm.",
+      });
       setPending(false);
       if ("error" in result) {
         setError(result.error);
@@ -156,7 +159,9 @@ export default function SignUpPage() {
           className="text-primary underline disabled:opacity-50"
           disabled={resent}
           onClick={async () => {
-            const result = await resendSignUpEmail(email);
+            const result = await runAction(resendSignUpEmail(email), {
+              success: "Confirmation email resent.",
+            });
             if (!("error" in result)) setResent(true);
           }}
         >
