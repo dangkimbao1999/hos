@@ -22,10 +22,22 @@ describe("Sidebar", () => {
     expect(screen.getByText("DJ")).toBeInTheDocument();
   });
 
-  it("expands a category to show its subcategories, linking by category id", () => {
+  it("links a top-level category (even with no children) straight to Discover filtered by its name", () => {
     render(<Sidebar role="organizer" kycStatus="verified" categories={CATEGORIES} cities={[]} />);
-    fireEvent.click(screen.getByText("Solo Singer"));
+    const link = screen.getByRole("link", { name: "DJ" });
+    expect(link).toHaveAttribute("href", "/organizer/discover?category=DJ");
+  });
+
+  it("links a top-level category that has children straight to Discover filtered by its own name too", () => {
+    render(<Sidebar role="organizer" kycStatus="verified" categories={CATEGORIES} cities={[]} />);
+    const link = screen.getByRole("link", { name: "Solo Singer" });
+    expect(link).toHaveAttribute("href", "/organizer/discover?category=Solo%20Singer");
+  });
+
+  it("expands a category via its chevron toggle to show subcategories, linking by parent+own name", () => {
+    render(<Sidebar role="organizer" kycStatus="verified" categories={CATEGORIES} cities={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: /expand solo singer/i }));
     const link = screen.getByRole("link", { name: "Rapper" });
-    expect(link).toHaveAttribute("href", "/organizer/discover?category=cat-solo");
+    expect(link).toHaveAttribute("href", "/organizer/discover?category=Solo%20Singer&subcategory=Rapper");
   });
 });

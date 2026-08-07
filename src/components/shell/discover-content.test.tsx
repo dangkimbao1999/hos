@@ -1,6 +1,18 @@
-import { describe, expect, test } from "bun:test";
-import { toCardData } from "@/components/shell/discover-content";
-import type { PackageWithTalent } from "@/lib/supabase/types";
+import { afterEach, describe, expect, mock, test } from "bun:test";
+import { cleanup, render, screen } from "@testing-library/react";
+
+let mockSearchParams = new URLSearchParams();
+mock.module("next/navigation", () => ({
+  useSearchParams: () => mockSearchParams,
+}));
+
+import { DiscoverContent, toCardData } from "@/components/shell/discover-content";
+import type { CategoryOption, PackageWithTalent } from "@/lib/supabase/types";
+
+afterEach(() => {
+  cleanup();
+  mockSearchParams = new URLSearchParams();
+});
 
 function makePackage(overrides: Partial<PackageWithTalent> = {}): PackageWithTalent {
   return {
@@ -50,5 +62,54 @@ describe("toCardData", () => {
   test("carries the talent's real avatar url through", () => {
     const card = toCardData(makePackage({ talent_avatar_url: "https://example.com/avatar.jpg" }));
     expect(card.avatarUrl).toBe("https://example.com/avatar.jpg");
+  });
+});
+
+const CATEGORIES: CategoryOption[] = [
+  { id: "cat-solo", name: "Solo Singer", subcategories: [{ id: "cat-rapper", name: "Rapper" }] },
+  { id: "cat-dj", name: "DJ", subcategories: [] },
+];
+
+describe("DiscoverContent — category/subcategory from the URL (sidebar links)", () => {
+  const packages = [
+    makePackage({ id: "pkg-dj", talent_name: "DJ Nova", category_name: "DJ", subcategory_name: null }),
+    makePackage({ id: "pkg-rapper", talent_name: "MC Rap", category_name: "Solo Singer", subcategory_name: "Rapper" }),
+    makePackage({ id: "pkg-ballad", talent_name: "Ballad Singer", category_name: "Solo Singer", subcategory_name: "Ballad" }),
+  ];
+
+  test("filters to the category named in the ?category= URL param", () => {
+    mockSearchParams = new URLSearchParams("category=DJ");
+    render(<DiscoverContent role="organizer" packages={packages} categories={CATEGORIES} cities={[]} />);
+    expect(screen.getByText("DJ Nova")).toBeInTheDocument();
+    expect(screen.queryByText("MC Rap")).not.toBeInTheDocument();
+  });
+
+  test("further narrows to the subcategory named in the ?subcategory= URL param", () => {
+    mockSearchParams = new URLSearchParams("category=Solo+Singer&subcategory=Rapper");
+    render(<DiscoverContent role="organizer" packages={packages} categories={CATEGORIES} cities={[]} />);
+    expect(screen.getByText("MC Rap")).toBeInTheDocument();
+    expect(screen.queryByText("Ballad Singer")).not.toBeInTheDocument();
+    expect(screen.queryByText("DJ Nova")).not.toBeInTheDocument();
+  });
+});
+
+describe("DiscoverContent — ?q= search from the header search bar", () => {
+  const packages = [
+    makePackage({ id: "pkg-1", talent_name: "DJ Nova", title: "Wedding Set", category_name: "DJ" }),
+    makePackage({ id: "pkg-2", talent_name: "MC Rap", title: "Party Package", category_name: "Solo Singer" }),
+  ];
+
+  test("matches the talent's name, ignoring the category tab", () => {
+    mockSearchParams = new URLSearchParams("q=nova");
+    render(<DiscoverContent role="organizer" packages={packages} categories={CATEGORIES} cities={[]} />);
+    expect(screen.getByText("DJ Nova")).toBeInTheDocument();
+    expect(screen.queryByText("MC Rap")).not.toBeInTheDocument();
+  });
+
+  test("matches the package title too", () => {
+    mockSearchParams = new URLSearchParams("q=party");
+    render(<DiscoverContent role="organizer" packages={packages} categories={CATEGORIES} cities={[]} />);
+    expect(screen.getByText("MC Rap")).toBeInTheDocument();
+    expect(screen.queryByText("DJ Nova")).not.toBeInTheDocument();
   });
 });

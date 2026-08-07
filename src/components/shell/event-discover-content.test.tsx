@@ -1,9 +1,18 @@
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, mock } from "bun:test";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+
+let mockSearchParams = new URLSearchParams();
+mock.module("next/navigation", () => ({
+  useSearchParams: () => mockSearchParams,
+}));
+
 import { EventDiscoverContent } from "@/components/shell/event-discover-content";
 import type { EventListingSummary } from "@/lib/supabase/types";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  mockSearchParams = new URLSearchParams();
+});
 
 function makeListing(overrides: Partial<EventListingSummary> = {}): EventListingSummary {
   return {
@@ -55,5 +64,49 @@ describe("EventDiscoverContent", () => {
 
     expect(screen.queryByText("DJ Event")).not.toBeInTheDocument();
     expect(screen.getByText("Band Event")).toBeInTheDocument();
+  });
+
+  it("filters to the category named in the ?category= URL param (sidebar link)", () => {
+    mockSearchParams = new URLSearchParams("category=Band");
+    render(
+      <EventDiscoverContent
+        role="talent"
+        listings={[
+          makeListing({ id: "event-dj", name: "DJ Event", categories: ["DJ"] }),
+          makeListing({ id: "event-band", name: "Band Event", categories: ["Band"] }),
+        ]}
+        categories={CATEGORIES}
+      />
+    );
+    expect(screen.getByText("Band Event")).toBeInTheDocument();
+    expect(screen.queryByText("DJ Event")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the parent category when a ?subcategory= is given (events aren't tagged at subcategory level)", () => {
+    mockSearchParams = new URLSearchParams("category=Band&subcategory=Rock Band");
+    render(
+      <EventDiscoverContent
+        role="talent"
+        listings={[makeListing({ id: "event-band", name: "Band Event", categories: ["Band"] })]}
+        categories={CATEGORIES}
+      />
+    );
+    expect(screen.getByText("Band Event")).toBeInTheDocument();
+  });
+
+  it("filters by the ?q= search query from the header search bar, across all categories", () => {
+    mockSearchParams = new URLSearchParams("q=summer");
+    render(
+      <EventDiscoverContent
+        role="talent"
+        listings={[
+          makeListing({ id: "event-summer", name: "Summer Fest", categories: ["DJ"] }),
+          makeListing({ id: "event-winter", name: "Winter Gala", categories: ["Band"] }),
+        ]}
+        categories={CATEGORIES}
+      />
+    );
+    expect(screen.getByText("Summer Fest")).toBeInTheDocument();
+    expect(screen.queryByText("Winter Gala")).not.toBeInTheDocument();
   });
 });

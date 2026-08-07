@@ -49,3 +49,65 @@ describe("OrdersContent — toasts", () => {
     expect(toastCalls).toContainEqual({ type: "success", message: "Booking accepted." });
   });
 });
+
+describe("OrdersContent — filter tabs", () => {
+  const bookings = [
+    makeBooking({ id: "pending1-a", status: "pending", organizer_name: "Org Pending" }),
+    makeBooking({ id: "confirm1-a", status: "confirmed", organizer_name: "Org Confirmed" }),
+    makeBooking({ id: "complete1-a", status: "completed", organizer_name: "Org Completed" }),
+    makeBooking({ id: "cancel1-a", status: "cancelled", organizer_name: "Org Cancelled" }),
+  ];
+
+  it("shows every order under the All tab", () => {
+    render(<OrdersContent role="talent" bookings={bookings} />);
+    expect(screen.getByText("Org Pending")).toBeInTheDocument();
+    expect(screen.getByText("Org Confirmed")).toBeInTheDocument();
+    expect(screen.getByText("Org Completed")).toBeInTheDocument();
+    expect(screen.getByText("Org Cancelled")).toBeInTheDocument();
+  });
+
+  it("narrows to only that status when a filter tab is clicked", () => {
+    render(<OrdersContent role="talent" bookings={bookings} />);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmed" }));
+    expect(screen.getByText("Org Confirmed")).toBeInTheDocument();
+    expect(screen.queryByText("Org Pending")).not.toBeInTheDocument();
+    expect(screen.queryByText("Org Completed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Org Cancelled")).not.toBeInTheDocument();
+  });
+
+  it("Upcoming shows only confirmed bookings with a future booked date", () => {
+    render(
+      <OrdersContent
+        role="talent"
+        bookings={[
+          makeBooking({ id: "future1-a", status: "confirmed", booked_date: "2099-01-01", organizer_name: "Future Org" }),
+          makeBooking({ id: "past1-a", status: "confirmed", booked_date: "2020-01-01", organizer_name: "Past Org" }),
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Upcoming" }));
+    expect(screen.getByText("Future Org")).toBeInTheDocument();
+    expect(screen.queryByText("Past Org")).not.toBeInTheDocument();
+  });
+});
+
+describe("OrdersContent — search", () => {
+  const bookings = [
+    makeBooking({ id: "alpha001-x", organizer_name: "Alpha Events" }),
+    makeBooking({ id: "beta002-x", organizer_name: "Beta Events" }),
+  ];
+
+  it("filters by counterpart name", () => {
+    render(<OrdersContent role="talent" bookings={bookings} />);
+    fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "alpha" } });
+    expect(screen.getByText("Alpha Events")).toBeInTheDocument();
+    expect(screen.queryByText("Beta Events")).not.toBeInTheDocument();
+  });
+
+  it("filters by order id", () => {
+    render(<OrdersContent role="talent" bookings={bookings} />);
+    fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "beta002" } });
+    expect(screen.getByText("Beta Events")).toBeInTheDocument();
+    expect(screen.queryByText("Alpha Events")).not.toBeInTheDocument();
+  });
+});

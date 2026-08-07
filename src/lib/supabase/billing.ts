@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { mapLookupNames } from "@/lib/supabase/lookups";
 import type { Role } from "@/lib/nav-items";
 
 /**
@@ -77,7 +78,7 @@ export async function listBillingData(
     if (applications && applications.length > 0) {
       const { data: slots } = await supabase
         .from("event_slots")
-        .select("id, event_id, category, price_usd")
+        .select("id, event_id, category_id, price_usd")
         .in("id", applications.map((a) => a.slot_id));
 
       if (slots && slots.length > 0) {
@@ -87,6 +88,7 @@ export async function listBillingData(
           .select("id, name, venue, event_date")
           .in("id", slots.map((s) => s.event_id));
         const eventById = new Map((events ?? []).map((e) => [e.id, e]));
+        const categoryNameById = await mapLookupNames(supabase, "categories", slots.map((s) => s.category_id));
 
         for (const app of applications) {
           const slot = slotById.get(app.slot_id);
@@ -99,7 +101,7 @@ export async function listBillingData(
           }
           const usd = app.offer_amount_usd ?? slot.price_usd;
           group.lines.push({
-            name: slot.category,
+            name: categoryNameById.get(slot.category_id) ?? "",
             date: event.event_date,
             amountVnd: usd * USD_TO_VND_RATE,
           });
@@ -149,7 +151,7 @@ export async function listBillingData(
       const eventById = new Map(myEvents.map((e) => [e.id, e]));
       const { data: slots } = await supabase
         .from("event_slots")
-        .select("id, event_id, category, price_usd")
+        .select("id, event_id, category_id, price_usd")
         .in("event_id", myEvents.map((e) => e.id));
 
       if (slots && slots.length > 0) {

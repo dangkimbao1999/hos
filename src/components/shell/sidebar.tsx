@@ -110,26 +110,35 @@ export function Sidebar({
               const isOpen = openSubcategory === category.id;
               return (
                 <div key={category.id}>
-                  <button
-                    type="button"
-                    onClick={() => hasChildren && setOpenSubcategory(isOpen ? null : category.id)}
-                    className="flex w-full items-center gap-3 rounded-[8px] py-2.5 pl-8 pr-4 text-sm tracking-[-0.03em] text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
-                  >
-                    <span className="size-1.5 shrink-0 rounded-full bg-current" />
-                    <span className="flex-1 text-left">{category.name}</span>
-                    {hasChildren &&
-                      (isOpen ? (
-                        <ChevronDown className="size-3.5 shrink-0" />
-                      ) : (
-                        <ChevronRight className="size-3.5 shrink-0" />
-                      ))}
-                  </button>
+                  <div className="flex w-full items-center gap-3 rounded-[8px] py-2.5 pl-8 pr-4 text-sm tracking-[-0.03em] text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground">
+                    <Link
+                      href={`/${role}/discover?category=${encodeURIComponent(category.name)}`}
+                      className="flex flex-1 items-center gap-3"
+                    >
+                      <span className="size-1.5 shrink-0 rounded-full bg-current" />
+                      <span className="flex-1 text-left">{category.name}</span>
+                    </Link>
+                    {hasChildren && (
+                      <button
+                        type="button"
+                        onClick={() => setOpenSubcategory(isOpen ? null : category.id)}
+                        aria-label={isOpen ? `Collapse ${category.name}` : `Expand ${category.name}`}
+                        className="shrink-0"
+                      >
+                        {isOpen ? (
+                          <ChevronDown className="size-3.5 shrink-0" />
+                        ) : (
+                          <ChevronRight className="size-3.5 shrink-0" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                   {hasChildren && isOpen && (
                     <div className="flex flex-col gap-1">
                       {category.subcategories.map((sub) => (
                         <Link
                           key={sub.id}
-                          href={`/${role}/discover?category=${encodeURIComponent(category.id)}`}
+                          href={`/${role}/discover?category=${encodeURIComponent(category.name)}&subcategory=${encodeURIComponent(sub.name)}`}
                           className="rounded-[8px] py-2 pl-14 pr-4 text-sm text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
                         >
                           {sub.name}
