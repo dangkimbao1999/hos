@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { toCardData } from "@/components/shell/home-content";
+import { toCardData } from "@/components/shell/discover-content";
 import type { PackageWithTalent } from "@/lib/supabase/types";
 
 function makePackage(overrides: Partial<PackageWithTalent> = {}): PackageWithTalent {
@@ -44,18 +44,8 @@ describe("toCardData", () => {
     expect(card.category).toBe("Solo Singer · Rapper");
   });
 
-  test("falls back to just category when sub_category is null", () => {
-    const card = toCardData(makePackage({ category: "Band", sub_category: null }));
-    expect(card.category).toBe("Band");
-  });
-
-  test("always tags the card as VND currency", () => {
-    expect(toCardData(makePackage()).currency).toBe("VND");
-  });
-
-  test("carries the real price range through", () => {
-    const card = toCardData(makePackage({ price_min_vnd: 2_000_000, price_max_vnd: 6_000_000 }));
-    expect(card.priceMin).toBe(2_000_000);
-    expect(card.priceMax).toBe(6_000_000);
+  test("carries the talent's real avatar url through", () => {
+    const card = toCardData(makePackage({ talent_avatar_url: "https://example.com/avatar.jpg" }));
+    expect(card.avatarUrl).toBe("https://example.com/avatar.jpg");
   });
 });

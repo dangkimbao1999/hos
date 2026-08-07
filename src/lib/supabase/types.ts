@@ -152,6 +152,8 @@ export interface PackageWithTalent extends PackageRow {
   talent_name: string;
   talent_slug: string;
   talent_keywords: string[];
+  talent_avatar_url: string | null;
+  talent_genre: string | null;
 }
 
 export interface CartItemRow {

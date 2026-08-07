@@ -23,6 +23,7 @@ export default async function TalentDetailPage({
   const relatedPackages = await listRelatedPackagesForTalent(
     talent.id,
     [...new Set(packages.map((pkg) => pkg.category))],
+    talent.genre,
     10
   );
 

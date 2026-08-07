@@ -15,6 +15,18 @@ const categoryLabels = talentCategories.map((c) => c.label);
 const LOCATIONS = ["All", "HCM City", "Hanoi", "Da Nang"];
 const SORTS = ["Most Popular", "Newest", "Price: Low to High", "Price: High to Low"];
 
+export function toCardData(pkg: PackageWithTalent) {
+  return {
+    id: pkg.id,
+    title: pkg.talent_name,
+    category: pkg.sub_category ? `${pkg.category} · ${pkg.sub_category}` : pkg.category,
+    avatarUrl: pkg.talent_avatar_url,
+    priceMin: pkg.price_min_vnd,
+    priceMax: pkg.price_max_vnd,
+    currency: "VND" as const,
+  };
+}
+
 export function DiscoverContent({ role, packages }: { role: Role; packages: PackageWithTalent[] }) {
   const searchParams = useSearchParams();
   const categoryFromUrl = searchParams.get("category");
@@ -81,18 +93,7 @@ export function DiscoverContent({ role, packages }: { role: Role; packages: Pack
 
       <div className="grid grid-cols-[repeat(auto-fill,289px)] gap-6 pt-4">
         {results.map((pkg) => (
-          <SearchResultCard
-            key={pkg.id}
-            data={{
-              id: pkg.id,
-              title: pkg.talent_name,
-              category: pkg.sub_category ? `${pkg.category} · ${pkg.sub_category}` : pkg.category,
-              priceMin: pkg.price_min_vnd,
-              priceMax: pkg.price_max_vnd,
-              currency: "VND",
-            }}
-            href={`/${role}/talents/${pkg.talent_slug}`}
-          />
+          <SearchResultCard key={pkg.id} data={toCardData(pkg)} href={`/${role}/talents/${pkg.talent_slug}`} />
         ))}
       </div>
     </div>

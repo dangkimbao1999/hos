@@ -8,15 +8,15 @@ mock.module("next/navigation", () => ({
   },
 }));
 
-let talentToReturn: Profile | null = { id: "talent-1", full_name: "Test Talent" } as Profile;
+let talentToReturn: Profile | null = { id: "talent-1", full_name: "Test Talent", genre: null } as Profile;
 let packagesToReturn: PackageRow[] = [];
-let relatedArgs: { talentId: string; categories: string[]; limit: number } | null = null;
+let relatedArgs: { talentId: string; categories: string[]; genre: string | null; limit: number } | null = null;
 
 mock.module("@/lib/supabase/packages", () => ({
   getTalentBySlug: async () => talentToReturn,
   listPackagesForTalent: async () => packagesToReturn,
-  listRelatedPackagesForTalent: async (talentId: string, categories: string[], limit: number) => {
-    relatedArgs = { talentId, categories, limit };
+  listRelatedPackagesForTalent: async (talentId: string, categories: string[], genre: string | null, limit: number) => {
+    relatedArgs = { talentId, categories, genre, limit };
     return [];
   },
 }));
@@ -31,7 +31,7 @@ import TalentDetailPage from "@/app/organizer/talents/[slug]/page";
 
 afterEach(() => {
   cleanup();
-  talentToReturn = { id: "talent-1", full_name: "Test Talent" } as Profile;
+  talentToReturn = { id: "talent-1", full_name: "Test Talent", genre: null } as Profile;
   packagesToReturn = [];
   relatedArgs = null;
 });
@@ -52,7 +52,15 @@ describe("TalentDetailPage", () => {
 
     await TalentDetailPage({ params: Promise.resolve({ slug: "test-talent" }) });
 
-    expect(relatedArgs).toEqual({ talentId: "talent-1", categories: ["DJ", "Live Band"], limit: 10 });
+    expect(relatedArgs).toEqual({ talentId: "talent-1", categories: ["DJ", "Live Band"], genre: null, limit: 10 });
+  });
+
+  it("passes the talent's genre through for related-talent matching", async () => {
+    talentToReturn = { id: "talent-1", full_name: "Test Talent", genre: "Rap" } as Profile;
+
+    await TalentDetailPage({ params: Promise.resolve({ slug: "test-talent" }) });
+
+    expect(relatedArgs?.genre).toBe("Rap");
   });
 
   it("calls notFound when no talent matches the slug", async () => {

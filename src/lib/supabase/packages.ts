@@ -22,7 +22,7 @@ export async function withTalentInfo(
   const talentIds = [...new Set(packages.map((p) => p.talent_id))];
   const { data: talents } = await supabase
     .from("profiles")
-    .select("id, full_name, slug, keywords")
+    .select("id, full_name, slug, keywords, avatar_url, genre")
     .in("id", talentIds);
   const talentById = new Map((talents ?? []).map((t) => [t.id, t]));
 
@@ -30,7 +30,14 @@ export async function withTalentInfo(
     const talent = talentById.get(pkg.talent_id);
     if (!talent) return [];
     return [
-      { ...pkg, talent_name: talent.full_name, talent_slug: talent.slug, talent_keywords: talent.keywords },
+      {
+        ...pkg,
+        talent_name: talent.full_name,
+        talent_slug: talent.slug,
+        talent_keywords: talent.keywords,
+        talent_avatar_url: talent.avatar_url,
+        talent_genre: talent.genre,
+      },
     ];
   });
 }
@@ -94,25 +101,34 @@ export async function listPackagesForTalent(talentId: string): Promise<PackageRo
   return data ?? [];
 }
 
-/** Active packages from other talents, preferring the current talent's package categories. */
+/** Whether a candidate package should surface in another talent's "related" carousel. */
+export function isRelatedPackage(
+  pkg: Pick<PackageWithTalent, "category" | "talent_genre">,
+  categories: string[],
+  genre: string | null
+): boolean {
+  return categories.includes(pkg.category) || (genre !== null && pkg.talent_genre === genre);
+}
+
+/** Active packages from other talents whose category or genre matches this talent's — for the talent-detail page's "More Related Talents" carousel. */
 export async function listRelatedPackagesForTalent(
   talentId: string,
   categories: string[],
+  genre: string | null,
   limit: number
 ): Promise<PackageWithTalent[]> {
   const supabase = await createClient();
-  let query = supabase
+  const { data } = await supabase
     .from("packages")
     .select("*")
     .eq("status", "active")
-    .neq("talent_id", talentId);
+    .neq("talent_id", talentId)
+    .order("created_at", { ascending: false })
+    .limit(100);
 
-  if (categories.length > 0) {
-    query = query.in("category", categories);
-  }
-
-  const { data } = await query.order("created_at", { ascending: false }).limit(limit);
-  return withTalentInfo(supabase, data ?? []);
+  const candidates = await withTalentInfo(supabase, data ?? []);
+  const related = candidates.filter((pkg) => isRelatedPackage(pkg, categories, genre));
+  return related.slice(0, limit);
 }
 
 /** A talent's own packages, plus how many bookings each has — for Account > My Packages. */

@@ -161,6 +161,7 @@ export function TalentDetailContent({
                         category: pkg.sub_category
                           ? `${pkg.category} / ${pkg.sub_category}`
                           : pkg.category,
+                        avatarUrl: pkg.talent_avatar_url,
                         priceMin: pkg.price_min_vnd,
                         priceMax: pkg.price_max_vnd,
                         currency: "VND",

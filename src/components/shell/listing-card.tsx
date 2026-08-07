@@ -5,6 +5,7 @@ export interface ListingCardData {
   id: string;
   title: string;
   category: string;
+  avatarUrl?: string | null;
   /** Omitted when there's no real rating data yet (ratings/reviews aren't modeled). */
   rating?: number;
   reviewCount?: number;
@@ -24,9 +25,14 @@ export function formatPriceRange(min: number, max: number, currency: "USD" | "VN
 export function ListingCard({ data, href }: { data: ListingCardData; href?: string }) {
   const content = (
     <>
-      <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-        <ImageIcon className="size-8" />
-      </div>
+      {data.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={data.avatarUrl} alt="" className="absolute inset-0 size-full object-cover" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+          <ImageIcon className="size-8" />
+        </div>
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
 
       {data.rating !== undefined && (
@@ -73,9 +79,14 @@ export function SearchResultCard({ data, href }: { data: ListingCardData; href?:
   const content = (
     <>
       <div className="relative flex h-[389px] flex-col justify-between overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center bg-white/10 text-muted-foreground">
-          <ImageIcon className="size-8" />
-        </div>
+        {data.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={data.avatarUrl} alt="" className="absolute inset-0 size-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/10 text-muted-foreground">
+            <ImageIcon className="size-8" />
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
 
         {data.rating !== undefined && (
@@ -121,7 +132,11 @@ export function SearchResultCard({ data, href }: { data: ListingCardData; href?:
   return <div className={className}>{content}</div>;
 }
 
-function ImagePlaceholder({ className }: { className?: string }) {
+function ImagePlaceholder({ className, avatarUrl }: { className?: string; avatarUrl?: string | null }) {
+  if (avatarUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={avatarUrl} alt="" className={`object-cover ${className ?? ""}`} />;
+  }
   return (
     <div className={`flex items-center justify-center bg-white/10 text-muted-foreground ${className ?? ""}`}>
       <ImageIcon className="size-6" />
@@ -136,7 +151,7 @@ function ImagePlaceholder({ className }: { className?: string }) {
 export function ListingRow({ data, href }: { data: ListingCardData; href?: string }) {
   const content = (
     <>
-      <ImagePlaceholder className="size-[52px] shrink-0 rounded-[6px]" />
+      <ImagePlaceholder className="size-[52px] shrink-0 rounded-[6px]" avatarUrl={data.avatarUrl} />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-medium text-foreground">{data.title}</span>
         <span className="truncate text-xs text-muted-foreground">{data.category}</span>
