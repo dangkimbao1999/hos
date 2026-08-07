@@ -160,6 +160,9 @@ export async function addToCart(
   });
 
   if (error) return { error: error.message };
+  // The organizer layout fetches cart items once per navigation; without this,
+  // the topbar's cart badge/dropdown stay stale after adding an item.
+  revalidatePath("/organizer", "layout");
   return { success: true };
 }
 
