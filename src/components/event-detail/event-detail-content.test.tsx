@@ -32,7 +32,7 @@ function makeEvent(overrides: Partial<EventWithSlots> = {}): EventWithSlots {
     status: "upcoming",
     created_at: new Date().toISOString(),
     slots: [],
-    organizer: { full_name: "", location: null, bio: null, gallery_urls: [], social_links: [] },
+    organizer: { full_name: "", city_name: null, bio: null, gallery_urls: [], social_links: [] },
     ...overrides,
   };
 }
@@ -45,7 +45,7 @@ describe("EventDetailContent — About Organizer tab", () => {
         event={makeEvent({
           organizer: {
             full_name: "420 Ent.",
-            location: "District 1, Ho Chi Minh City",
+            city_name: "District 1, Ho Chi Minh City",
             bio: "The organizer's real bio.",
             gallery_urls: [],
             social_links: [{ platform: "Instagram", url: "https://instagram.com/420ent" }],

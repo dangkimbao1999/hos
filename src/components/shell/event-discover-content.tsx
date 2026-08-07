@@ -4,13 +4,21 @@ import { useMemo, useState } from "react";
 import { FilterPill } from "@/components/shell/filter-pill";
 import { TimeRangeFilter, type DateRange } from "@/components/shell/time-range-filter";
 import { EventListingCard } from "@/components/shell/event-listing-card";
-import { talentCategories, type Role } from "@/lib/nav-items";
-import type { EventListingSummary } from "@/lib/supabase/types";
+import type { Role } from "@/lib/nav-items";
+import type { CategoryOption, EventListingSummary } from "@/lib/supabase/types";
 
-const CATEGORIES = ["All", ...talentCategories.map((c) => c.label)];
 const SORTS = ["Most Popular", "Newest", "Price: Low to High", "Price: High to Low"];
 
-export function EventDiscoverContent({ role, listings }: { role: Role; listings: EventListingSummary[] }) {
+export function EventDiscoverContent({
+  role,
+  listings,
+  categories,
+}: {
+  role: Role;
+  listings: EventListingSummary[];
+  categories: CategoryOption[];
+}) {
+  const CATEGORIES = ["All", ...categories.map((c) => c.name)];
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [sort, setSort] = useState(SORTS[0]);
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });

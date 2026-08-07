@@ -22,7 +22,7 @@ afterEach(() => {
 
 describe("CreatePackageDialog — toasts", () => {
   it("shows a success toast when a package is created", async () => {
-    render(<CreatePackageDialog role="talent" open onOpenChange={() => {}} />);
+    render(<CreatePackageDialog role="talent" open onOpenChange={() => {}} categories={[]} cities={[]} />);
     // role="talent" is not agency, so the dialog opens directly on the
     // "form" step (see the isAgency ? "choose-talent" : "form" initial
     // state) — no talent-selection step to click through first.

@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { mockPackages } from "@/lib/mock-account";
 import { deletePackage } from "@/lib/supabase/package-actions";
 import type { Role } from "@/lib/nav-items";
-import type { PackageRow } from "@/lib/supabase/types";
+import type { CategoryOption, LookupOption, PackageRow } from "@/lib/supabase/types";
 import { runAction } from "@/lib/toast-action";
 
 const statusStyles: Record<string, string> = {
@@ -43,14 +43,18 @@ interface DisplayPackage {
 export function PackagesContent({
   role,
   packages,
+  categories,
+  cities,
 }: {
   role: Role;
   packages?: (PackageRow & { bookingCount: number })[];
+  categories: CategoryOption[];
+  cities: LookupOption[];
 }) {
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
   const [category, setCategory] = useState("All");
-  const [location, setLocation] = useState("HCM City");
+  const [location, setLocation] = useState(cities[0]?.name ?? "");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, PRICE_FILTER_MAX]);
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [editingPackage, setEditingPackage] = useState<PackageRow | null>(null);
@@ -92,8 +96,13 @@ export function PackagesContent({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-3">
-          <FilterPill label="Category" value={category} onChange={setCategory} options={["All", "Solo Singer", "Band", "DJ"]} />
-          <FilterPill label="Location" value={location} onChange={setLocation} options={["HCM City", "Hanoi", "Da Nang"]} />
+          <FilterPill
+            label="Category"
+            value={category}
+            onChange={setCategory}
+            options={["All", ...categories.map((c) => c.name)]}
+          />
+          <FilterPill label="Location" value={location} onChange={setLocation} options={cities.map((c) => c.name)} />
           <PriceRangeFilter range={priceRange} onChange={setPriceRange} />
           <TimeRangeFilter range={dateRange} onChange={setDateRange} />
         </div>
@@ -115,6 +124,8 @@ export function PackagesContent({
             role={role}
             open={createOpen}
             onOpenChange={setCreateOpen}
+            categories={categories}
+            cities={cities}
           />
           <CreatePackageDialog
             key={editingPackage ? editingPackage.id : "edit-closed"}
@@ -127,6 +138,8 @@ export function PackagesContent({
               }
             }}
             editingPackage={editingPackage ?? undefined}
+            categories={categories}
+            cities={cities}
           />
         </div>
       </div>

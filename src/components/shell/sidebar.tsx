@@ -12,16 +12,24 @@ import {
   LinkedinIcon,
   TwitterIcon,
 } from "@/components/shell/social-icons";
-import { createEventCta, talentCategories, type Role } from "@/lib/nav-items";
+import { createEventCta, type Role } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
-import type { KycStatus } from "@/lib/supabase/types";
+import type { CategoryOption, KycStatus, LookupOption } from "@/lib/supabase/types";
 
-export function Sidebar({ role, kycStatus }: { role: Role; kycStatus: KycStatus }) {
+export function Sidebar({
+  role,
+  kycStatus,
+  categories,
+  cities,
+}: {
+  role: Role;
+  kycStatus: KycStatus;
+  categories: CategoryOption[];
+  cities: LookupOption[];
+}) {
   const pathname = usePathname();
   const [categoryOpen, setCategoryOpen] = useState(role === "organizer");
-  const [openSubcategory, setOpenSubcategory] = useState<string | null>(
-    role === "organizer" ? "Solo Singer" : null
-  );
+  const [openSubcategory, setOpenSubcategory] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const isVerified = kycStatus === "verified";
 
@@ -62,6 +70,8 @@ export function Sidebar({ role, kycStatus }: { role: Role; kycStatus: KycStatus 
             role={role}
             open={createOpen}
             onOpenChange={setCreateOpen}
+            categories={categories}
+            cities={cities}
           />
         </>
       )}
@@ -95,18 +105,18 @@ export function Sidebar({ role, kycStatus }: { role: Role; kycStatus: KycStatus 
 
         {categoryOpen && (
           <div className="flex flex-col gap-1">
-            {talentCategories.map((category) => {
-              const hasChildren = !!category.subcategories?.length;
-              const isOpen = openSubcategory === category.label;
+            {categories.map((category) => {
+              const hasChildren = category.subcategories.length > 0;
+              const isOpen = openSubcategory === category.id;
               return (
-                <div key={category.label}>
+                <div key={category.id}>
                   <button
                     type="button"
-                    onClick={() => hasChildren && setOpenSubcategory(isOpen ? null : category.label)}
+                    onClick={() => hasChildren && setOpenSubcategory(isOpen ? null : category.id)}
                     className="flex w-full items-center gap-3 rounded-[8px] py-2.5 pl-8 pr-4 text-sm tracking-[-0.03em] text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
                   >
                     <span className="size-1.5 shrink-0 rounded-full bg-current" />
-                    <span className="flex-1 text-left">{category.label}</span>
+                    <span className="flex-1 text-left">{category.name}</span>
                     {hasChildren &&
                       (isOpen ? (
                         <ChevronDown className="size-3.5 shrink-0" />
@@ -116,13 +126,13 @@ export function Sidebar({ role, kycStatus }: { role: Role; kycStatus: KycStatus 
                   </button>
                   {hasChildren && isOpen && (
                     <div className="flex flex-col gap-1">
-                      {category.subcategories!.map((sub) => (
+                      {category.subcategories.map((sub) => (
                         <Link
-                          key={sub}
-                          href={`/${role}/discover?category=${encodeURIComponent(sub)}`}
+                          key={sub.id}
+                          href={`/${role}/discover?category=${encodeURIComponent(category.id)}`}
                           className="rounded-[8px] py-2 pl-14 pr-4 text-sm text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
                         >
-                          {sub}
+                          {sub.name}
                         </Link>
                       ))}
                     </div>

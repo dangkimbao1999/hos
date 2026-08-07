@@ -13,17 +13,18 @@ mock.module("@/lib/supabase/event-actions", () => ({
 }));
 
 import { ApplyDialog } from "@/components/event-detail/apply-dialog";
-import type { EventSlotRow, EventWithSlots } from "@/lib/supabase/types";
+import type { EventWithSlots } from "@/lib/supabase/types";
 
 afterEach(() => {
   cleanup();
   toastCalls.length = 0;
 });
 
-const slot: EventSlotRow = {
+const slot: EventWithSlots["slots"][number] = {
   id: "slot-1",
   event_id: "event-1",
-  category: "Solo Singer",
+  category_id: "cat-solo-singer",
+  category_name: "Solo Singer",
   price_usd: 500,
   slot_type: "Fulltime",
   quantity_total: 1,
@@ -51,7 +52,7 @@ const event: EventWithSlots = {
   status: "upcoming",
   created_at: new Date().toISOString(),
   slots: [slot],
-  organizer: { full_name: "Test Organizer", location: null, bio: null, gallery_urls: [], social_links: [] },
+  organizer: { full_name: "Test Organizer", city_name: null, bio: null, gallery_urls: [], social_links: [] },
 };
 
 describe("ApplyDialog — toasts", () => {

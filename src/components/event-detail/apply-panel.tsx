@@ -59,7 +59,7 @@ export function ApplyPanel({ event, role }: { event: EventWithSlots; role: Role 
               <div className="flex items-start gap-3">
                 <RadioGroupItem value={String(i)} id={`slot-${slot.id}`} className="mt-0.5" />
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-foreground">{slot.category}</span>
+                  <span className="text-sm font-medium text-foreground">{slot.category_name}</span>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="rounded-full bg-white/10 px-2 py-1 text-muted-foreground">TYPE</span>
                     <span className="text-foreground">{slot.slot_type}</span>

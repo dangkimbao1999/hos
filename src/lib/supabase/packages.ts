@@ -1,16 +1,32 @@
+import { mapLookupNames } from "@/lib/supabase/lookups";
 import { createClient } from "@/lib/supabase/server";
 import type {
   BookingWithNames,
   CartItemWithPackage,
   PackageRow,
+  PackageWithLookupNames,
   PackageWithTalent,
-  Profile,
+  ProfileWithLookupNames,
 } from "@/lib/supabase/types";
 
-export async function getTalentBySlug(slug: string): Promise<Profile | null> {
+export async function getTalentBySlug(slug: string): Promise<ProfileWithLookupNames | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("profiles").select("*").eq("slug", slug).eq("role", "talent").single();
-  return data as Profile | null;
+  if (!data) return null;
+
+  const [cityNames, genreNames, categoryNames] = await Promise.all([
+    mapLookupNames(supabase, "cities", [data.city_id]),
+    mapLookupNames(supabase, "genres", [data.genre_id]),
+    mapLookupNames(supabase, "categories", [data.category_id, data.subcategory_id]),
+  ]);
+
+  return {
+    ...data,
+    city_name: cityNames.get(data.city_id) ?? null,
+    genre_name: genreNames.get(data.genre_id) ?? null,
+    category_name: categoryNames.get(data.category_id) ?? null,
+    subcategory_name: categoryNames.get(data.subcategory_id) ?? null,
+  };
 }
 
 export async function withTalentInfo(
@@ -22,9 +38,19 @@ export async function withTalentInfo(
   const talentIds = [...new Set(packages.map((p) => p.talent_id))];
   const { data: talents } = await supabase
     .from("profiles")
-    .select("id, full_name, slug, keywords, avatar_url, genre")
+    .select("id, full_name, slug, keywords, avatar_url, genre_id")
     .in("id", talentIds);
   const talentById = new Map((talents ?? []).map((t) => [t.id, t]));
+
+  const [cityNames, categoryNames, genreNames] = await Promise.all([
+    mapLookupNames(supabase, "cities", packages.map((p) => p.city_id)),
+    mapLookupNames(
+      supabase,
+      "categories",
+      packages.flatMap((p) => [p.category_id, p.subcategory_id])
+    ),
+    mapLookupNames(supabase, "genres", (talents ?? []).map((t) => t.genre_id)),
+  ]);
 
   return packages.flatMap((pkg) => {
     const talent = talentById.get(pkg.talent_id);
@@ -36,7 +62,10 @@ export async function withTalentInfo(
         talent_slug: talent.slug,
         talent_keywords: talent.keywords,
         talent_avatar_url: talent.avatar_url,
-        talent_genre: talent.genre,
+        talent_genre_name: talent.genre_id ? (genreNames.get(talent.genre_id) ?? null) : null,
+        category_name: categoryNames.get(pkg.category_id) ?? "",
+        subcategory_name: pkg.subcategory_id ? (categoryNames.get(pkg.subcategory_id) ?? null) : null,
+        city_name: cityNames.get(pkg.city_id) ?? "",
       },
     ];
   });
@@ -101,20 +130,43 @@ export async function listPackagesForTalent(talentId: string): Promise<PackageRo
   return data ?? [];
 }
 
+/** A talent's own packages with city/category/subcategory ids resolved to display names — for the public Talent detail page. */
+export async function listPackagesForTalentWithNames(talentId: string): Promise<PackageWithLookupNames[]> {
+  const supabase = await createClient();
+  const packages = await listPackagesForTalent(talentId);
+  if (packages.length === 0) return [];
+
+  const [cityNames, categoryNames] = await Promise.all([
+    mapLookupNames(supabase, "cities", packages.map((p) => p.city_id)),
+    mapLookupNames(
+      supabase,
+      "categories",
+      packages.flatMap((p) => [p.category_id, p.subcategory_id])
+    ),
+  ]);
+
+  return packages.map((pkg) => ({
+    ...pkg,
+    category_name: categoryNames.get(pkg.category_id) ?? "",
+    subcategory_name: pkg.subcategory_id ? (categoryNames.get(pkg.subcategory_id) ?? null) : null,
+    city_name: cityNames.get(pkg.city_id) ?? "",
+  }));
+}
+
 /** Whether a candidate package should surface in another talent's "related" carousel. */
 export function isRelatedPackage(
-  pkg: Pick<PackageWithTalent, "category" | "talent_genre">,
-  categories: string[],
-  genre: string | null
+  pkg: Pick<PackageWithTalent, "category_name" | "talent_genre_name">,
+  categoryNames: string[],
+  genreName: string | null
 ): boolean {
-  return categories.includes(pkg.category) || (genre !== null && pkg.talent_genre === genre);
+  return categoryNames.includes(pkg.category_name) || (genreName !== null && pkg.talent_genre_name === genreName);
 }
 
 /** Active packages from other talents whose category or genre matches this talent's — for the talent-detail page's "More Related Talents" carousel. */
 export async function listRelatedPackagesForTalent(
   talentId: string,
-  categories: string[],
-  genre: string | null,
+  categoryNames: string[],
+  genreName: string | null,
   limit: number
 ): Promise<PackageWithTalent[]> {
   const supabase = await createClient();
@@ -127,7 +179,7 @@ export async function listRelatedPackagesForTalent(
     .limit(100);
 
   const candidates = await withTalentInfo(supabase, data ?? []);
-  const related = candidates.filter((pkg) => isRelatedPackage(pkg, categories, genre));
+  const related = candidates.filter((pkg) => isRelatedPackage(pkg, categoryNames, genreName));
   return related.slice(0, limit);
 }
 
@@ -156,7 +208,7 @@ export async function listCartItems(organizerId: string): Promise<CartItemWithPa
   const supabase = await createClient();
   const { data: items } = await supabase
     .from("cart_items")
-    .select("*, package:packages(id, title, location, talent_id)")
+    .select("*, package:packages(id, title, city_id, talent_id)")
     .eq("organizer_id", organizerId)
     .order("created_at", { ascending: false });
   if (!items || items.length === 0) return [];
@@ -165,8 +217,18 @@ export async function listCartItems(organizerId: string): Promise<CartItemWithPa
   const { data: talents } = await supabase.from("profiles").select("id, full_name").in("id", talentIds);
   const talentById = new Map((talents ?? []).map((t) => [t.id, t]));
 
+  const cityNames = await mapLookupNames(
+    supabase,
+    "cities",
+    items.map((i) => (i.package as { city_id: string }).city_id)
+  );
+
   return items.map((item) => ({
     ...item,
+    package: {
+      ...(item.package as { id: string; title: string; city_id: string }),
+      city_name: cityNames.get((item.package as { city_id: string }).city_id) ?? "",
+    },
     talent: talentById.get((item.package as { talent_id: string }).talent_id) ?? { id: "", full_name: "" },
   })) as CartItemWithPackage[];
 }

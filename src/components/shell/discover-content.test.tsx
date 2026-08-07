@@ -6,11 +6,11 @@ function makePackage(overrides: Partial<PackageWithTalent> = {}): PackageWithTal
   return {
     id: "pkg-1",
     talent_id: "talent-1",
-    category: "Solo Singer",
-    sub_category: null,
+    category_id: "cat-solo-singer",
+    subcategory_id: null,
     title: "My Package",
     residency: null,
-    location: "HCM City",
+    city_id: "city-hcm",
     repeat_on: true,
     repeat_days: null,
     start_date: "2026-08-01",
@@ -29,7 +29,10 @@ function makePackage(overrides: Partial<PackageWithTalent> = {}): PackageWithTal
     talent_slug: "some-talent-abc123",
     talent_keywords: [],
     talent_avatar_url: null,
-    talent_genre: null,
+    talent_genre_name: null,
+    category_name: "Solo Singer",
+    subcategory_name: null,
+    city_name: "HCM City",
     ...overrides,
   };
 }
@@ -39,8 +42,8 @@ describe("toCardData", () => {
     expect(toCardData(makePackage({ talent_name: "DJ Nova" })).title).toBe("DJ Nova");
   });
 
-  test("combines category and sub_category when sub_category is set", () => {
-    const card = toCardData(makePackage({ category: "Solo Singer", sub_category: "Rapper" }));
+  test("combines category and subcategory when subcategory_name is set", () => {
+    const card = toCardData(makePackage({ category_name: "Solo Singer", subcategory_name: "Rapper" }));
     expect(card.category).toBe("Solo Singer · Rapper");
   });
 

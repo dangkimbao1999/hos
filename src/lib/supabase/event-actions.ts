@@ -53,7 +53,7 @@ export async function createEvent(
   );
 
   const slotsRaw = String(formData.get("slots") ?? "[]");
-  let parsedSlots: { category: string; priceUsd: string; quantity: string }[];
+  let parsedSlots: { categoryId: string; priceUsd: string; quantity: string }[];
   try {
     parsedSlots = JSON.parse(slotsRaw);
   } catch {
@@ -61,11 +61,11 @@ export async function createEvent(
   }
   const slots = parsedSlots
     .map((s) => ({
-      category: s.category,
+      category_id: s.categoryId,
       price_usd: Number(s.priceUsd ?? 0),
       quantity_total: Math.max(1, Number(s.quantity ?? 1)),
     }))
-    .filter((s) => s.category);
+    .filter((s) => s.category_id);
   if (slots.length === 0) return { error: "Add at least one talent slot." };
 
   // The wizard only collects a single start time — default a 90-minute set.
@@ -98,7 +98,7 @@ export async function createEvent(
   const { error: slotError } = await supabase.from("event_slots").insert(
     slots.map((slot) => ({
       event_id: event.id,
-      category: slot.category,
+      category_id: slot.category_id,
       price_usd: slot.price_usd,
       quantity_total: slot.quantity_total,
     }))

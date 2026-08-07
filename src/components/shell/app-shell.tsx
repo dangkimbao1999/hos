@@ -2,7 +2,13 @@ import type { ReactNode } from "react";
 import { KycBanner } from "@/components/shell/kyc-banner";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
-import type { CartItemWithPackage, KycStatus, NotificationItem } from "@/lib/supabase/types";
+import type {
+  CartItemWithPackage,
+  CategoryOption,
+  KycStatus,
+  LookupOption,
+  NotificationItem,
+} from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
 
 export function AppShell({
@@ -12,6 +18,8 @@ export function AppShell({
   kycStatus,
   cartItems,
   notifications,
+  categories,
+  cities,
   children,
 }: {
   role: Role;
@@ -20,11 +28,13 @@ export function AppShell({
   kycStatus: KycStatus;
   cartItems?: CartItemWithPackage[];
   notifications: NotificationItem[];
+  categories: CategoryOption[];
+  cities: LookupOption[];
   children: ReactNode;
 }) {
   return (
     <div className="flex min-h-screen w-full bg-background">
-      <Sidebar role={role} kycStatus={kycStatus} />
+      <Sidebar role={role} kycStatus={kycStatus} categories={categories} cities={cities} />
       <div className="flex min-w-0 flex-1 flex-col">
         <KycBanner role={role} status={kycStatus} />
         <Topbar

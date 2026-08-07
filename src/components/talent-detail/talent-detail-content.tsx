@@ -10,7 +10,7 @@ import { RequestQuoteDialog } from "@/components/talent-detail/request-quote-dia
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { TalentReviewSummary } from "@/lib/supabase/reviews";
-import type { PackageRow, PackageWithTalent, Profile } from "@/lib/supabase/types";
+import type { PackageWithLookupNames, PackageWithTalent, ProfileWithLookupNames } from "@/lib/supabase/types";
 
 const TABS = ["Overview", "Schedules", "Reviews", "About Talent"] as const;
 type Tab = (typeof TABS)[number];
@@ -27,15 +27,15 @@ export function TalentDetailContent({
   relatedPackages,
   reviewSummary,
 }: {
-  talent: Profile;
-  packages: PackageRow[];
+  talent: ProfileWithLookupNames;
+  packages: PackageWithLookupNames[];
   relatedPackages: PackageWithTalent[];
   reviewSummary: TalentReviewSummary;
 }) {
   const [tab, setTab] = useState<Tab>("Overview");
   // Tagline/category have no real schema yet — kept as generic mock flavor
   // text alongside the real name/bio/packages/reviews/media/social data.
-  const categoryLabel = [...new Set(packages.map((pkg) => pkg.category))].join(", ");
+  const categoryLabel = [...new Set(packages.map((pkg) => pkg.category_name))].join(", ");
   const overviewTitle = packages.find((pkg) => pkg.description?.trim())?.description?.trim();
 
   return (
@@ -52,8 +52,8 @@ export function TalentDetailContent({
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
         <div className="relative flex flex-col gap-1 p-8">
           <h1 className="text-4xl font-bold tracking-[-0.03em] text-white">{talent.full_name}</h1>
-          {(categoryLabel || talent.genre) && (
-            <span className="text-sm text-white/60">{categoryLabel || talent.genre}</span>
+          {(categoryLabel || talent.genre_name) && (
+            <span className="text-sm text-white/60">{categoryLabel || talent.genre_name}</span>
           )}
         </div>
       </div>
@@ -158,9 +158,9 @@ export function TalentDetailContent({
                       data={{
                         id: pkg.id,
                         title: pkg.talent_name,
-                        category: pkg.sub_category
-                          ? `${pkg.category} / ${pkg.sub_category}`
-                          : pkg.category,
+                        category: pkg.subcategory_name
+                          ? `${pkg.category_name} / ${pkg.subcategory_name}`
+                          : pkg.category_name,
                         avatarUrl: pkg.talent_avatar_url,
                         priceMin: pkg.price_min_vnd,
                         priceMax: pkg.price_max_vnd,
@@ -266,10 +266,10 @@ export function TalentDetailContent({
                   </div>
                 )}
                 <div className="flex flex-wrap gap-8">
-                  {talent.location && (
+                  {talent.city_name && (
                     <div className="flex flex-col gap-1">
                       <span className="text-xs uppercase text-muted-foreground">Location</span>
-                      <span className="text-sm text-foreground">{talent.location}</span>
+                      <span className="text-sm text-foreground">{talent.city_name}</span>
                     </div>
                   )}
                   {talent.date_of_birth && (
@@ -284,10 +284,10 @@ export function TalentDetailContent({
                       </span>
                     </div>
                   )}
-                  {talent.genre && (
+                  {talent.genre_name && (
                     <div className="flex flex-col gap-1">
                       <span className="text-xs uppercase text-muted-foreground">Genre</span>
-                      <span className="text-sm text-foreground">{talent.genre}</span>
+                      <span className="text-sm text-foreground">{talent.genre_name}</span>
                     </div>
                   )}
                 </div>

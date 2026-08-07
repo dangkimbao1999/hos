@@ -8,18 +8,16 @@ import { HashtagFilter } from "@/components/shell/hashtag-filter";
 import { PriceRangeFilter, PRICE_FILTER_MAX } from "@/components/shell/price-range-filter";
 import { TimeRangeFilter, type DateRange } from "@/components/shell/time-range-filter";
 import { SearchResultCard } from "@/components/shell/listing-card";
-import { talentCategories, type Role } from "@/lib/nav-items";
-import type { PackageWithTalent } from "@/lib/supabase/types";
+import type { Role } from "@/lib/nav-items";
+import type { CategoryOption, LookupOption, PackageWithTalent } from "@/lib/supabase/types";
 
-const categoryLabels = talentCategories.map((c) => c.label);
-const LOCATIONS = ["All", "HCM City", "Hanoi", "Da Nang"];
 const SORTS = ["Most Popular", "Newest", "Price: Low to High", "Price: High to Low"];
 
 export function toCardData(pkg: PackageWithTalent) {
   return {
     id: pkg.id,
     title: pkg.talent_name,
-    category: pkg.sub_category ? `${pkg.category} · ${pkg.sub_category}` : pkg.category,
+    category: pkg.subcategory_name ? `${pkg.category_name} · ${pkg.subcategory_name}` : pkg.category_name,
     avatarUrl: pkg.talent_avatar_url,
     priceMin: pkg.price_min_vnd,
     priceMax: pkg.price_max_vnd,
@@ -27,8 +25,19 @@ export function toCardData(pkg: PackageWithTalent) {
   };
 }
 
-export function DiscoverContent({ role, packages }: { role: Role; packages: PackageWithTalent[] }) {
+export function DiscoverContent({
+  role,
+  packages,
+  categories,
+  cities,
+}: {
+  role: Role;
+  packages: PackageWithTalent[];
+  categories: CategoryOption[];
+  cities: LookupOption[];
+}) {
   const searchParams = useSearchParams();
+  const categoryLabels = categories.map((c) => c.name);
   const categoryFromUrl = searchParams.get("category");
   const [activeCategory, setActiveCategory] = useState(categoryFromUrl ?? categoryLabels[0]);
   const [subCategory, setSubCategory] = useState("All");
@@ -38,9 +47,10 @@ export function DiscoverContent({ role, packages }: { role: Role; packages: Pack
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
 
+  const LOCATIONS = ["All", ...cities.map((c) => c.name)];
   const subCategoryOptions = [
     "All",
-    ...(talentCategories.find((c) => c.label === activeCategory)?.subcategories ?? []),
+    ...(categories.find((c) => c.name === activeCategory)?.subcategories.map((s) => s.name) ?? []),
   ];
 
   const hashtagSuggestions = [...new Set(packages.flatMap((p) => p.talent_keywords))];
@@ -53,9 +63,9 @@ export function DiscoverContent({ role, packages }: { role: Role; packages: Pack
   const results = useMemo(() => {
     return packages
       .filter((pkg) => {
-        if (pkg.category !== activeCategory) return false;
-        if (subCategory !== "All" && pkg.sub_category !== subCategory) return false;
-        if (location !== "All" && pkg.location !== location) return false;
+        if (pkg.category_name !== activeCategory) return false;
+        if (subCategory !== "All" && pkg.subcategory_name !== subCategory) return false;
+        if (location !== "All" && pkg.city_name !== location) return false;
         if (pkg.price_max_vnd < priceRange[0] || pkg.price_min_vnd > priceRange[1]) return false;
         if (hashtags.length > 0 && !hashtags.some((h) => pkg.talent_keywords.includes(h))) return false;
         if (dateRange.start && dateRange.end && (pkg.end_date < dateRange.start || pkg.start_date > dateRange.end))

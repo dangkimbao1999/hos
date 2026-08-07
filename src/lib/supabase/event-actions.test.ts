@@ -81,7 +81,10 @@ function baseFormData(overrides: Record<string, string> = {}): FormData {
   formData.set("guests", "200");
   formData.set("requirements", "");
   formData.set("photoPaths", "[]");
-  formData.set("slots", JSON.stringify([{ category: "DJ", priceUsd: "2000", quantity: "1" }]));
+  formData.set(
+    "slots",
+    JSON.stringify([{ categoryId: "22222222-2222-2222-2222-222222222222", priceUsd: "2000", quantity: "1" }])
+  );
   for (const [key, value] of Object.entries(overrides)) formData.set(key, value);
   return formData;
 }

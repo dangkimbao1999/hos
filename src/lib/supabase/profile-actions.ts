@@ -19,18 +19,22 @@ export async function updateProfile(
 
   const fullName = String(formData.get("fullName") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim() || null;
-  const location = String(formData.get("location") ?? "").trim() || null;
+  const cityId = String(formData.get("cityId") ?? "").trim() || null;
   const dateOfBirth = String(formData.get("dateOfBirth") ?? "").trim() || null;
-  const genre = String(formData.get("genre") ?? "").trim() || null;
+  const genreId = String(formData.get("genreId") ?? "").trim() || null;
+  const categoryId = String(formData.get("categoryId") ?? "").trim() || null;
+  const subcategoryId = String(formData.get("subcategoryId") ?? "").trim() || null;
 
   if (!fullName) return { error: "Display name is required." };
 
   const update: {
     full_name: string;
     bio: string | null;
-    location: string | null;
+    city_id: string | null;
     date_of_birth: string | null;
-    genre: string | null;
+    genre_id: string | null;
+    category_id: string | null;
+    subcategory_id: string | null;
     keywords?: string[];
     social_links?: SocialLink[];
     achievements?: Achievement[];
@@ -38,9 +42,11 @@ export async function updateProfile(
   } = {
     full_name: fullName,
     bio,
-    location,
+    city_id: cityId,
     date_of_birth: dateOfBirth,
-    genre,
+    genre_id: genreId,
+    category_id: categoryId,
+    subcategory_id: subcategoryId,
   };
 
   const keywordsRaw = formData.get("keywords");

@@ -48,11 +48,18 @@ mock.module("@/lib/supabase/server", () => ({
       if (table === "profiles") {
         return makeProfilesChain({
           full_name: "420 Ent.",
-          location: "District 1, Ho Chi Minh City",
+          city_id: "city-1",
           bio: "The organizer's real bio.",
           gallery_urls: ["https://example.com/gallery/1.png"],
           social_links: [{ platform: "Instagram", url: "https://instagram.com/420ent" }],
         });
+      }
+      if (table === "cities") {
+        return {
+          select: () => ({
+            in: async () => ({ data: [{ id: "city-1", name: "District 1, Ho Chi Minh City" }] }),
+          }),
+        };
       }
       throw new Error(`unexpected table ${table}`);
     },
