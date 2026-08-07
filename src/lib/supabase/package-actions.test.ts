@@ -1,11 +1,12 @@
-import { describe, expect, it, mock } from "bun:test";
+import { afterEach, describe, expect, it, mock } from "bun:test";
 
-mock.module("next/cache", () => ({ revalidatePath: () => {} }));
+const revalidatePath = mock(() => {});
+mock.module("next/cache", () => ({ revalidatePath }));
 
 const USER_ID = "11111111-1111-1111-1111-111111111111";
 
 function makeSupabase(options: { user: { id: string } | null; kycStatus?: string }) {
-  const inserted: { packages?: Record<string, unknown> } = {};
+  const inserted: { packages?: Record<string, unknown>; cart_items?: Record<string, unknown> } = {};
   const updated: { packages?: Record<string, unknown> } = {};
 
   return {
@@ -32,6 +33,14 @@ function makeSupabase(options: { user: { id: string } | null; kycStatus?: string
           },
         };
       }
+      if (table === "cart_items") {
+        return {
+          insert: async (row: Record<string, unknown>) => {
+            inserted.cart_items = row;
+            return { error: null };
+          },
+        };
+      }
       throw new Error(`unexpected table ${table}`);
     },
     __inserted: inserted,
@@ -55,6 +64,10 @@ import {
   removeFromCart,
   updatePackage,
 } from "@/lib/supabase/package-actions";
+
+afterEach(() => {
+  revalidatePath.mockClear();
+});
 
 function packageFormData(overrides: Record<string, string> = {}): FormData {
   const formData = new FormData();
@@ -137,5 +150,19 @@ describe("createPackage / updatePackage", () => {
       subcategory_id: null,
       city_id: "44444444-4444-4444-4444-444444444444",
     });
+  });
+});
+
+describe("addToCart", () => {
+  it("revalidates the organizer layout so the cart badge/dropdown refresh on the next navigation", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    const formData = new FormData();
+    formData.set("packageId", "pkg-1");
+    formData.set("priceVnd", "1000000");
+
+    const result = await addToCart(formData);
+
+    expect(result).toEqual({ success: true });
+    expect(revalidatePath).toHaveBeenCalledWith("/organizer", "layout");
   });
 });
