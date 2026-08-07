@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { TalentDetailContent } from "@/components/talent-detail/talent-detail-content";
-import { getTalentBySlug, listPackagesForTalent } from "@/lib/supabase/packages";
+import {
+  getTalentBySlug,
+  listPackagesForTalent,
+  listRelatedPackagesForTalent,
+} from "@/lib/supabase/packages";
 import { getTalentReviewSummary } from "@/lib/supabase/reviews";
 
 export default async function TalentDetailPage({
@@ -16,6 +20,18 @@ export default async function TalentDetailPage({
     listPackagesForTalent(talent.id),
     getTalentReviewSummary(talent.id),
   ]);
+  const relatedPackages = await listRelatedPackagesForTalent(
+    talent.id,
+    [...new Set(packages.map((pkg) => pkg.category))],
+    10
+  );
 
-  return <TalentDetailContent talent={talent} packages={packages} reviewSummary={reviewSummary} />;
+  return (
+    <TalentDetailContent
+      talent={talent}
+      packages={packages}
+      relatedPackages={relatedPackages}
+      reviewSummary={reviewSummary}
+    />
+  );
 }
