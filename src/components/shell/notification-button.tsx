@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Bell, CreditCard, User } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { markNotificationsRead } from "@/lib/supabase/notification-actions";
 import { runAction } from "@/lib/toast-action";
-import type { NotificationItem } from "@/lib/supabase/types";
+import type { NotificationItem, NotificationKind } from "@/lib/supabase/types";
+import type { Role } from "@/lib/nav-items";
 
 const PERSON_KINDS = new Set([
   "application_received",
@@ -15,7 +17,28 @@ const PERSON_KINDS = new Set([
   "quotation_responded",
 ]);
 
-export function NotificationButton({ notifications }: { notifications: NotificationItem[] }) {
+/** Where clicking a notification of this kind should take the viewer. */
+function hrefForNotification(kind: NotificationKind, role: Role): string {
+  const base = `/${role}/account`;
+  switch (kind) {
+    case "application_received":
+      return `${base}/events`;
+    case "application_status":
+      return `${base}/schedule`;
+    case "booking_received":
+      return `${base}/orders`;
+    case "booking_status":
+      return `${base}/orders`;
+    case "quotation_received":
+      return `${base}/quotations`;
+    case "quotation_responded":
+      return `${base}/quotations`;
+    case "kyc_status":
+      return `/${role}/kyc`;
+  }
+}
+
+export function NotificationButton({ role, notifications }: { role: Role; notifications: NotificationItem[] }) {
   const [items, setItems] = useState(notifications);
   const hasUnread = items.some((n) => n.unread);
 
@@ -44,7 +67,11 @@ export function NotificationButton({ notifications }: { notifications: Notificat
             <p className="p-4 text-sm text-muted-foreground">No notifications yet.</p>
           ) : (
             items.map((n) => (
-              <div key={n.id} className="flex items-start gap-3 p-4">
+              <Link
+                key={n.id}
+                href={hrefForNotification(n.kind, role)}
+                className="flex items-start gap-3 p-4 transition-colors hover:bg-white/5"
+              >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-foreground">
                   {PERSON_KINDS.has(n.kind) ? <User className="size-4" /> : <CreditCard className="size-4" />}
                 </span>
@@ -53,7 +80,7 @@ export function NotificationButton({ notifications }: { notifications: Notificat
                   <p className="mt-1 text-xs text-muted-foreground">{n.time}</p>
                 </div>
                 {n.unread && <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" />}
-              </div>
+              </Link>
             ))
           )}
         </div>

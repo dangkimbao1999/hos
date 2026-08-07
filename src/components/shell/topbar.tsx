@@ -44,7 +44,7 @@ export function Topbar({
         }}
       />
       <div className="flex shrink-0 items-center gap-[18px]">
-        <NotificationButton notifications={notifications} />
+        <NotificationButton role={role} notifications={notifications} />
         {role === "organizer" && <CartButton role={role} cartItems={cartItems} />}
         <ProfileMenu name={userName} role={role} avatarUrl={userAvatarUrl} />
       </div>
