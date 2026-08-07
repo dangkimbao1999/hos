@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { talentCategories } from "@/lib/nav-items";
 import { createEvent } from "@/lib/supabase/event-actions";
+import { MAX_EVENT_PHOTOS } from "@/lib/supabase/event-photo-validation";
 import { removeEventPhoto, uploadEventPhoto } from "@/lib/supabase/storage-actions";
 import { runAction } from "@/lib/toast-action";
 
@@ -79,7 +80,7 @@ export default function CreateEventPage() {
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES);
   const [slots, setSlots] = useState<SlotValues[]>([emptySlot()]);
   const [photos, setPhotos] = useState<EventPhoto[]>(() =>
-    Array.from({ length: 3 }, () => ({ ...EMPTY_EVENT_PHOTO }))
+    Array.from({ length: MAX_EVENT_PHOTOS }, () => ({ ...EMPTY_EVENT_PHOTO }))
   );
   const [error, setError] = useState<string | undefined>();
   const [pending, setPending] = useState(false);
@@ -282,9 +283,11 @@ export default function CreateEventPage() {
           <div className="flex flex-col gap-5">
             <div>
               <h2 className="text-lg font-semibold text-foreground">Add Photos</h2>
-              <p className="text-sm text-muted-foreground">Add up to 3 photos of your venue or event</p>
+              <p className="text-sm text-muted-foreground">
+                Add up to {MAX_EVENT_PHOTOS} photos of your venue or event
+              </p>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-5 gap-4">
               {photos.map((photo, index) => (
                 <UploadSlot
                   key={index}

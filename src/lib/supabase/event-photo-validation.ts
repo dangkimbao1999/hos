@@ -1,4 +1,4 @@
-export const MAX_EVENT_PHOTOS = 3;
+export const MAX_EVENT_PHOTOS = 10;
 
 export function parseEventPhotoPaths(
   value: FormDataEntryValue | null,

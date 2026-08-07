@@ -4,7 +4,7 @@ import { parseEventPhotoPaths } from "@/lib/supabase/event-photo-validation";
 const USER_ID = "11111111-1111-1111-1111-111111111111";
 
 describe("parseEventPhotoPaths", () => {
-  it("accepts up to three unique photos owned by the current user", () => {
+  it("accepts up to ten unique photos owned by the current user", () => {
     const path = `${USER_ID}/events/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.webp`;
     expect(parseEventPhotoPaths(JSON.stringify([path, path]), USER_ID)).toEqual({ paths: [path] });
   });
@@ -18,12 +18,13 @@ describe("parseEventPhotoPaths", () => {
     ).toEqual({ error: "Invalid event photos." });
   });
 
-  it("rejects more than three photos", () => {
-    const paths = [1, 2, 3, 4].map(
-      (number) => `${USER_ID}/events/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa${number}.webp`
+  it("rejects more than ten photos", () => {
+    const paths = Array.from(
+      { length: 11 },
+      (_, i) => `${USER_ID}/events/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa${i}.webp`
     );
     expect(parseEventPhotoPaths(JSON.stringify(paths), USER_ID)).toEqual({
-      error: "You can upload at most 3 event photos.",
+      error: "You can upload at most 10 event photos.",
     });
   });
 });

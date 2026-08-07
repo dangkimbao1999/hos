@@ -70,7 +70,7 @@ describe("CreateEventPage — event photos", () => {
 
     expect(screen.getByRole("heading", { name: "Add Photos" })).toBeInTheDocument();
     const inputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
-    expect(inputs).toHaveLength(3);
+    expect(inputs).toHaveLength(10);
 
     fireEvent.change(inputs[0], {
       target: { files: [new File(["photo"], "venue.png", { type: "image/png" })] },
