@@ -39,13 +39,30 @@ export function DiscoverContent({
   const searchParams = useSearchParams();
   const categoryLabels = categories.map((c) => c.name);
   const categoryFromUrl = searchParams.get("category");
+  const subcategoryFromUrl = searchParams.get("subcategory");
+  const searchQuery = searchParams.get("q");
   const [activeCategory, setActiveCategory] = useState(categoryFromUrl ?? categoryLabels[0]);
-  const [subCategory, setSubCategory] = useState("All");
+  const [subCategory, setSubCategory] = useState(subcategoryFromUrl ?? "All");
   const [location, setLocation] = useState("All");
   const [sort, setSort] = useState(SORTS[0]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, PRICE_FILTER_MAX]);
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
+
+  // Sidebar category links navigate to this same route with new query params
+  // rather than remounting the page, so the initial useState above only
+  // covers first load. Adjust state during render (React's documented
+  // pattern for "reset state when a prop changes") instead of an effect,
+  // so a new sidebar click resyncs before the stale-category frame paints.
+  const categoryKey = `${categoryFromUrl ?? ""}|${subcategoryFromUrl ?? ""}`;
+  const [prevCategoryKey, setPrevCategoryKey] = useState(categoryKey);
+  if (categoryKey !== prevCategoryKey) {
+    setPrevCategoryKey(categoryKey);
+    if (categoryFromUrl) {
+      setActiveCategory(categoryFromUrl);
+      setSubCategory(subcategoryFromUrl ?? "All");
+    }
+  }
 
   const LOCATIONS = ["All", ...cities.map((c) => c.name)];
   const subCategoryOptions = [
@@ -61,10 +78,20 @@ export function DiscoverContent({
   }
 
   const results = useMemo(() => {
+    const query = searchQuery?.trim().toLowerCase();
     return packages
       .filter((pkg) => {
-        if (pkg.category_name !== activeCategory) return false;
-        if (subCategory !== "All" && pkg.subcategory_name !== subCategory) return false;
+        if (query) {
+          // A keyword search from the header searches across every category,
+          // rather than being silently scoped to whichever tab happens to
+          // be selected.
+          const matchesQuery =
+            pkg.talent_name.toLowerCase().includes(query) || pkg.title.toLowerCase().includes(query);
+          if (!matchesQuery) return false;
+        } else {
+          if (pkg.category_name !== activeCategory) return false;
+          if (subCategory !== "All" && pkg.subcategory_name !== subCategory) return false;
+        }
         if (location !== "All" && pkg.city_name !== location) return false;
         if (pkg.price_max_vnd < priceRange[0] || pkg.price_min_vnd > priceRange[1]) return false;
         if (hashtags.length > 0 && !hashtags.some((h) => pkg.talent_keywords.includes(h))) return false;
@@ -78,7 +105,7 @@ export function DiscoverContent({
         // "Most Popular" has no real signal to sort by (no ratings/booking-count data yet) — falls back to Newest.
         return b.created_at.localeCompare(a.created_at);
       });
-  }, [packages, activeCategory, subCategory, location, priceRange, sort, hashtags, dateRange]);
+  }, [packages, activeCategory, subCategory, location, priceRange, sort, hashtags, dateRange, searchQuery]);
 
   return (
     <div className="flex flex-col gap-6 py-8">

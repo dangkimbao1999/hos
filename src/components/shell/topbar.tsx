@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CartButton } from "@/components/shell/cart-button";
 import { NotificationButton } from "@/components/shell/notification-button";
 import { ProfileMenu } from "@/components/shell/profile-menu";
@@ -18,9 +22,27 @@ export function Topbar({
   cartItems?: CartItemWithPackage[];
   notifications: NotificationItem[];
 }) {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+
+  function handleSearch() {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    router.push(`/${role}/discover?q=${encodeURIComponent(trimmed)}`);
+  }
+
   return (
     <header className="flex items-center justify-between gap-6 px-8 py-5">
-      <SearchBar />
+      <SearchBar
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleSearch();
+          }
+        }}
+      />
       <div className="flex shrink-0 items-center gap-[18px]">
         <NotificationButton notifications={notifications} />
         {role === "organizer" && <CartButton role={role} cartItems={cartItems} />}
