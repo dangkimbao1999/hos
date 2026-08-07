@@ -94,6 +94,27 @@ export async function listPackagesForTalent(talentId: string): Promise<PackageRo
   return data ?? [];
 }
 
+/** Active packages from other talents, preferring the current talent's package categories. */
+export async function listRelatedPackagesForTalent(
+  talentId: string,
+  categories: string[],
+  limit: number
+): Promise<PackageWithTalent[]> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("packages")
+    .select("*")
+    .eq("status", "active")
+    .neq("talent_id", talentId);
+
+  if (categories.length > 0) {
+    query = query.in("category", categories);
+  }
+
+  const { data } = await query.order("created_at", { ascending: false }).limit(limit);
+  return withTalentInfo(supabase, data ?? []);
+}
+
 /** A talent's own packages, plus how many bookings each has — for Account > My Packages. */
 export async function listPackagesWithBookingCounts(
   talentId: string

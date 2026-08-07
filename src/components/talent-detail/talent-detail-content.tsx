@@ -9,10 +9,8 @@ import { RatingReviewCard } from "@/components/talent-detail/rating-review-card"
 import { RequestQuoteDialog } from "@/components/talent-detail/request-quote-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { mockTalentDetail } from "@/lib/mock-talent-detail";
-import { mockFeaturedListings } from "@/lib/mock-listings";
 import type { TalentReviewSummary } from "@/lib/supabase/reviews";
-import type { PackageRow, Profile } from "@/lib/supabase/types";
+import type { PackageRow, PackageWithTalent, Profile } from "@/lib/supabase/types";
 
 const TABS = ["Overview", "Schedules", "Reviews", "About Talent"] as const;
 type Tab = (typeof TABS)[number];
@@ -26,17 +24,19 @@ const mockAvailability = [
 export function TalentDetailContent({
   talent,
   packages,
+  relatedPackages,
   reviewSummary,
 }: {
   talent: Profile;
   packages: PackageRow[];
+  relatedPackages: PackageWithTalent[];
   reviewSummary: TalentReviewSummary;
 }) {
   const [tab, setTab] = useState<Tab>("Overview");
   // Tagline/category have no real schema yet — kept as generic mock flavor
   // text alongside the real name/bio/packages/reviews/media/social data.
-  const mock = mockTalentDetail;
-  const bio = talent.bio || mock.bio;
+  const categoryLabel = [...new Set(packages.map((pkg) => pkg.category))].join(", ");
+  const overviewTitle = packages.find((pkg) => pkg.description?.trim())?.description?.trim();
 
   return (
     <div className="flex flex-col gap-6 py-8">
@@ -52,7 +52,9 @@ export function TalentDetailContent({
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
         <div className="relative flex flex-col gap-1 p-8">
           <h1 className="text-4xl font-bold tracking-[-0.03em] text-white">{talent.full_name}</h1>
-          <span className="text-sm text-white/60">{mock.category}</span>
+          {(categoryLabel || talent.genre) && (
+            <span className="text-sm text-white/60">{categoryLabel || talent.genre}</span>
+          )}
         </div>
       </div>
 
@@ -80,7 +82,11 @@ export function TalentDetailContent({
                 reviews={reviewSummary.reviews}
               />
 
-              <h2 className="text-2xl font-bold tracking-[-0.03em] text-foreground">{mock.tagline}</h2>
+              {overviewTitle && (
+                <h2 className="text-2xl font-bold tracking-[-0.03em] text-foreground">
+                  {overviewTitle}
+                </h2>
+              )}
 
               <div className="flex flex-col gap-3">
                 <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-md bg-white/10 text-muted-foreground">
@@ -106,7 +112,11 @@ export function TalentDetailContent({
                 )}
               </div>
 
-              <p className="text-sm leading-relaxed text-muted-foreground">{bio}</p>
+              {talent.bio ? (
+                <p className="text-sm leading-relaxed text-muted-foreground">{talent.bio}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">This talent has not added a bio yet.</p>
+              )}
 
               {talent.keywords.length > 0 && (
                 <div className="flex flex-col gap-3">
@@ -140,11 +150,26 @@ export function TalentDetailContent({
                 </div>
               )}
 
-              <CardCarousel title="More Related Talents" viewAllHref="/organizer/discover">
-                {mockFeaturedListings.map((item) => (
-                  <ListingCard key={item.id} data={item} />
-                ))}
-              </CardCarousel>
+              {relatedPackages.length > 0 && (
+                <CardCarousel title="More Related Talents" viewAllHref="/organizer/discover">
+                  {relatedPackages.map((pkg) => (
+                    <ListingCard
+                      key={pkg.id}
+                      data={{
+                        id: pkg.id,
+                        title: pkg.talent_name,
+                        category: pkg.sub_category
+                          ? `${pkg.category} / ${pkg.sub_category}`
+                          : pkg.category,
+                        priceMin: pkg.price_min_vnd,
+                        priceMax: pkg.price_max_vnd,
+                        currency: "VND",
+                      }}
+                      href={`/organizer/talents/${pkg.talent_slug}`}
+                    />
+                  ))}
+                </CardCarousel>
+              )}
             </>
           )}
 
@@ -218,7 +243,11 @@ export function TalentDetailContent({
                 <h2 className="text-xl font-bold tracking-[-0.03em] text-foreground">
                   About {talent.full_name}
                 </h2>
-                <p className="text-sm leading-relaxed text-muted-foreground">{bio}</p>
+                {talent.bio ? (
+                  <p className="text-sm leading-relaxed text-muted-foreground">{talent.bio}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">This talent has not added a bio yet.</p>
+                )}
                 {talent.social_links.length > 0 && (
                   <div className="flex flex-wrap gap-3">
                     {talent.social_links.map((link) => (
