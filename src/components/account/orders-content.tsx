@@ -1,26 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mockOrders } from "@/lib/mock-account";
-import { acceptBooking, rejectBooking } from "@/lib/supabase/package-actions";
 import { ReviewDialog } from "@/components/shared/review-dialog";
 import type { BookingWithNames } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
-import { runAction } from "@/lib/toast-action";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const statusStyles: Record<string, string> = {
   Pending: "bg-amber-500/10 text-amber-500",
+  Dealing: "bg-amber-500/10 text-amber-500",
   Confirmed: "bg-blue-500/10 text-blue-400",
   Completed: "bg-green-500/10 text-green-500",
   Cancelled: "bg-white/10 text-muted-foreground",
 };
 
-const SUB_FILTERS = ["All", "Upcoming", "Pending", "Confirmed", "Completed", "Cancelled"];
+const SUB_FILTERS = ["All", "Upcoming", "Pending", "Dealing", "Confirmed", "Completed", "Cancelled"];
 
 function formatVnd(n: number) {
   return `${n.toLocaleString("en-US")} VND`;
@@ -54,11 +54,8 @@ export function OrdersContent({
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState(SUB_FILTERS[0]);
   const [search, setSearch] = useState("");
-  const [pendingId, setPendingId] = useState<string | undefined>();
-  const [error, setError] = useState<string | undefined>();
   const [reviewTarget, setReviewTarget] = useState<{ id: string; talentName: string } | null>(null);
   const counterpartLabel = role === "organizer" ? "Talent" : "Organizer";
-  const isTalent = role === "talent";
   const isOrganizer = role === "organizer";
 
   const orders: DisplayOrder[] = bookings
@@ -97,20 +94,6 @@ export function OrdersContent({
     return true;
   });
 
-  async function handle(action: "accept" | "reject", id: string) {
-    setError(undefined);
-    setPendingId(id);
-    const result = await runAction(action === "accept" ? acceptBooking(id) : rejectBooking(id), {
-      success: action === "accept" ? "Booking accepted." : "Booking rejected.",
-    });
-    setPendingId(undefined);
-    if ("error" in result) {
-      setError(result.error);
-      return;
-    }
-    router.refresh();
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -143,8 +126,6 @@ export function OrdersContent({
         </div>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
       <div className="flex flex-col overflow-hidden rounded-md bg-white/5">
         <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-4 border-b border-border px-5 py-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
           <span>Order</span>
@@ -176,25 +157,14 @@ export function OrdersContent({
                 >
                   {order.status}
                 </span>
-                {isTalent && order.status === "Pending" && order.fullId && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={pendingId === order.fullId}
-                      onClick={() => handle("reject", order.fullId!)}
-                      className="rounded-[6px] bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/10"
-                    >
-                      Reject
-                    </button>
-                    <button
-                      type="button"
-                      disabled={pendingId === order.fullId}
-                      onClick={() => handle("accept", order.fullId!)}
-                      className="rounded-[6px] bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                    >
-                      Accept
-                    </button>
-                  </>
+                {order.fullId && (
+                  <Link
+                    href={`/${role}/account/orders/${order.fullId}`}
+                    aria-label="View order details"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-[6px] bg-white/5 text-foreground hover:bg-white/10"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Link>
                 )}
                 {isOrganizer &&
                   order.fullId &&

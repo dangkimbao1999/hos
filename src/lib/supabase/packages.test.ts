@@ -1,7 +1,72 @@
-import { describe, expect, test } from "bun:test";
-import { isRelatedPackage, withTalentInfo } from "@/lib/supabase/packages";
+import { describe, expect, mock, test } from "bun:test";
+import { getBookingDetail, isRelatedPackage, withTalentInfo } from "@/lib/supabase/packages";
 import { createClient } from "@/lib/supabase/server";
 import type { PackageRow, PackageWithTalent } from "@/lib/supabase/types";
+
+/** Chainable fake that resolves to `data` no matter what order
+ * select/eq/single are called in. */
+function makeChain(data: unknown) {
+  const chain: Record<string, unknown> = {
+    select: () => chain,
+    eq: () => chain,
+    in: () => chain,
+    single: async () => ({ data }),
+    then: (resolve: (v: { data: unknown }) => void) => resolve({ data }),
+  };
+  return chain;
+}
+
+mock.module("@/lib/supabase/server", () => ({
+  createClient: async () => ({
+    from: (table: string) => {
+      if (table === "package_bookings") {
+        return makeChain({
+          id: "booking-1",
+          package_id: "pkg-1",
+          organizer_id: "org-1",
+          price_vnd: 5_000_000,
+          talent_offer_vnd: 5_000_000,
+          organizer_offer_vnd: 5_000_000,
+          awaiting_response_from: "talent",
+          booked_date: "2026-12-01",
+          booked_time: "20:00",
+          payment_method: "Prepaid",
+          status: "pending",
+          created_at: "2026-08-01T00:00:00Z",
+          updated_at: "2026-08-01T00:00:00Z",
+        });
+      }
+      if (table === "packages") {
+        return makeChain({
+          title: "Acoustic Set",
+          description: "A chill set.",
+          address: "123 Main St",
+          working_method: "Freelance",
+          skill_tags: ["Guitar", "Vocals"],
+          talent_id: "talent-1",
+          city_id: "city-hcm",
+          start_time: "20:00:00",
+          end_time: "22:00:00",
+        });
+      }
+      if (table === "profiles") {
+        return {
+          select: () => ({
+            eq: (_col: string, id: string) => ({
+              single: async () => ({
+                data: { full_name: id === "org-1" ? "Test Organizer" : "Test Talent" },
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "cities") {
+        return { select: () => ({ in: async () => ({ data: [{ id: "city-hcm", name: "HCM City" }] }) }) };
+      }
+      throw new Error(`unexpected table ${table}`);
+    },
+  }),
+}));
 
 type FakeSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -60,6 +125,9 @@ function makePackageRow(overrides: Partial<PackageRow> = {}): PackageRow {
     title: "My Package",
     residency: null,
     city_id: CITY_HCM.id,
+    address: null,
+    working_method: null,
+    skill_tags: [],
     repeat_on: true,
     repeat_days: null,
     start_date: "2026-08-01",
@@ -167,5 +235,24 @@ describe("isRelatedPackage", () => {
     expect(
       isRelatedPackage(makeCandidate({ category_name: "Band", talent_genre_name: null }), ["Solo Singer"], null)
     ).toBe(false);
+  });
+});
+
+describe("getBookingDetail", () => {
+  test("joins the booking with its package's detail fields and both parties' names", async () => {
+    const result = await getBookingDetail("booking-1");
+    expect(result).toMatchObject({
+      id: "booking-1",
+      organizer_name: "Test Organizer",
+      talent_name: "Test Talent",
+      package_title: "Acoustic Set",
+      package_description: "A chill set.",
+      package_address: "123 Main St",
+      package_working_method: "Freelance",
+      package_skill_tags: ["Guitar", "Vocals"],
+      package_city_name: "HCM City",
+      package_start_time: "20:00:00",
+      package_end_time: "22:00:00",
+    });
   });
 });

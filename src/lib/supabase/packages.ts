@@ -1,6 +1,7 @@
 import { mapLookupNames } from "@/lib/supabase/lookups";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  BookingDetail,
   BookingWithNames,
   CartItemWithPackage,
   PackageRow,
@@ -271,6 +272,45 @@ export async function listBookingsForOrganizer(organizerId: string): Promise<Boo
       organizer_name: profileById.get(b.organizer_id)?.full_name ?? "",
     };
   });
+}
+
+/**
+ * Full booking + package detail for the Order Detail page. RLS on
+ * package_bookings already restricts this to the booking's organizer or the
+ * owning talent — an unauthorized viewer simply gets null, same as a
+ * nonexistent booking.
+ */
+export async function getBookingDetail(bookingId: string): Promise<BookingDetail | null> {
+  const supabase = await createClient();
+  const { data: booking } = await supabase.from("package_bookings").select("*").eq("id", bookingId).single();
+  if (!booking) return null;
+
+  const { data: pkg } = await supabase
+    .from("packages")
+    .select("title, description, address, working_method, skill_tags, talent_id, city_id, start_time, end_time")
+    .eq("id", booking.package_id)
+    .single();
+  if (!pkg) return null;
+
+  const [{ data: organizer }, { data: talent }, cityNames] = await Promise.all([
+    supabase.from("profiles").select("full_name").eq("id", booking.organizer_id).single(),
+    supabase.from("profiles").select("full_name").eq("id", pkg.talent_id).single(),
+    mapLookupNames(supabase, "cities", [pkg.city_id]),
+  ]);
+
+  return {
+    ...booking,
+    organizer_name: organizer?.full_name ?? "",
+    talent_name: talent?.full_name ?? "",
+    package_title: pkg.title,
+    package_description: pkg.description,
+    package_address: pkg.address,
+    package_working_method: pkg.working_method,
+    package_skill_tags: pkg.skill_tags,
+    package_city_name: cityNames.get(pkg.city_id) ?? "",
+    package_start_time: pkg.start_time,
+    package_end_time: pkg.end_time,
+  };
 }
 
 export async function listBookingsForTalent(talentId: string): Promise<BookingWithNames[]> {

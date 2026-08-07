@@ -10,10 +10,21 @@ export function AccountTabs({ role }: { role: Role }) {
   const pathname = usePathname();
   const items = getAccountNavItems(role);
 
+  // A nested route (e.g. an order's detail page under My Orders) should
+  // keep its parent tab highlighted — but "My Profile" (the account base
+  // path) is itself a string prefix of every other tab's href, so match
+  // the single MOST SPECIFIC (longest) href rather than any prefix match.
+  const activeHref = items.reduce<string | null>((best, item) => {
+    const matches = pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (!matches) return best;
+    if (!best || item.href.length > best.length) return item.href;
+    return best;
+  }, null);
+
   return (
     <div className="scrollbar-hide flex gap-3 overflow-x-auto">
       {items.map((item) => {
-        const active = pathname === item.href;
+        const active = item.href === activeHref;
         return (
           <Link
             key={item.href}

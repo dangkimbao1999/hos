@@ -155,6 +155,9 @@ export interface PackageRow {
   title: string;
   residency: string | null;
   city_id: string;
+  address: string | null;
+  working_method: string | null;
+  skill_tags: string[];
   repeat_on: boolean;
   repeat_days: string[] | null;
   start_date: string;
@@ -207,13 +210,19 @@ export interface CartItemWithPackage extends CartItemRow {
   talent: Pick<Profile, "id" | "full_name">;
 }
 
-export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
+export type BookingStatus = "pending" | "dealing" | "confirmed" | "completed" | "cancelled";
+
+/** Whose turn it is to Confirm/Counter/Cancel — null once the booking is confirmed/completed/cancelled. */
+export type BookingParty = "talent" | "organizer";
 
 export interface PackageBookingRow {
   id: string;
   package_id: string;
   organizer_id: string;
   price_vnd: number;
+  talent_offer_vnd: number;
+  organizer_offer_vnd: number;
+  awaiting_response_from: BookingParty | null;
   booked_date: string | null;
   booked_time: string | null;
   payment_method: PaymentMethod;
@@ -227,6 +236,20 @@ export interface BookingWithNames extends PackageBookingRow {
   package_title: string;
   organizer_name: string;
   talent_name: string;
+}
+
+/** A booking joined with full package + counterpart info — for the Order Detail page. */
+export interface BookingDetail extends PackageBookingRow {
+  organizer_name: string;
+  talent_name: string;
+  package_title: string;
+  package_description: string | null;
+  package_address: string | null;
+  package_working_method: string | null;
+  package_skill_tags: string[];
+  package_city_name: string;
+  package_start_time: string;
+  package_end_time: string;
 }
 
 export type QuotationStatus = "pending" | "quoted" | "accepted" | "rejected" | "declined";

@@ -244,6 +244,8 @@ export function CreatePackageDialog({
                 />
               </div>
 
+              <Field label="Address" name="address" defaultValue={editingPackage?.address ?? undefined} />
+
               {isAgency ? (
                 <SelectField label="One-time" name="oneTime" options={["One-time", "Repeat"]} />
               ) : (
@@ -292,6 +294,20 @@ export function CreatePackageDialog({
                 className="rounded-[6px]"
                 defaultValue={editingPackage?.description ?? undefined}
               />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field
+                  label="Working Method"
+                  name="workingMethod"
+                  defaultValue={editingPackage?.working_method ?? undefined}
+                />
+                <Field
+                  label="Skill Tags"
+                  name="skillTags"
+                  placeholder="Skill Tags (comma separated)"
+                  defaultValue={editingPackage?.skill_tags.join(", ")}
+                />
+              </div>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
 

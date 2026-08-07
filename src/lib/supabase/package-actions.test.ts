@@ -5,9 +5,24 @@ mock.module("next/cache", () => ({ revalidatePath }));
 
 const USER_ID = "11111111-1111-1111-1111-111111111111";
 
-function makeSupabase(options: { user: { id: string } | null; kycStatus?: string }) {
+const TALENT_ID = "22222222-2222-2222-2222-222222222222";
+const ORGANIZER_ID = "33333333-3333-3333-3333-333333333333";
+
+interface FakeBooking {
+  organizer_id: string;
+  awaiting_response_from: "talent" | "organizer" | null;
+  talent_offer_vnd: number;
+  organizer_offer_vnd: number;
+  talent_id: string;
+}
+
+function makeSupabase(options: {
+  user: { id: string } | null;
+  kycStatus?: string;
+  booking?: FakeBooking;
+}) {
   const inserted: { packages?: Record<string, unknown>; cart_items?: Record<string, unknown> } = {};
-  const updated: { packages?: Record<string, unknown> } = {};
+  const updated: { packages?: Record<string, unknown>; package_bookings?: Record<string, unknown> } = {};
 
   return {
     auth: { getUser: async () => ({ data: { user: options.user } }) },
@@ -41,6 +56,29 @@ function makeSupabase(options: { user: { id: string } | null; kycStatus?: string
           },
         };
       }
+      if (table === "package_bookings") {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({
+                data: options.booking
+                  ? {
+                      organizer_id: options.booking.organizer_id,
+                      awaiting_response_from: options.booking.awaiting_response_from,
+                      talent_offer_vnd: options.booking.talent_offer_vnd,
+                      organizer_offer_vnd: options.booking.organizer_offer_vnd,
+                      package: { talent_id: options.booking.talent_id },
+                    }
+                  : null,
+              }),
+            }),
+          }),
+          update: (row: Record<string, unknown>) => {
+            updated.package_bookings = row;
+            return { eq: async () => ({ error: null }) };
+          },
+        };
+      }
       throw new Error(`unexpected table ${table}`);
     },
     __inserted: inserted,
@@ -55,13 +93,14 @@ mock.module("@/lib/supabase/server", () => ({
 }));
 
 import {
-  acceptBooking,
   addToCart,
   checkoutCart,
+  confirmBookingOffer,
   createPackage,
   deletePackage,
   rejectBooking,
   removeFromCart,
+  submitCounterOffer,
   updatePackage,
 } from "@/lib/supabase/package-actions";
 
@@ -118,9 +157,14 @@ describe("package actions — signed-out guard", () => {
     expect(await checkoutCart(new FormData())).toEqual({ error: "You must be signed in." });
   });
 
-  it("acceptBooking rejects when not signed in", async () => {
+  it("confirmBookingOffer rejects when not signed in", async () => {
     supabaseMock = makeSupabase({ user: null });
-    expect(await acceptBooking("booking-1")).toEqual({ error: "You must be signed in." });
+    expect(await confirmBookingOffer("booking-1")).toEqual({ error: "You must be signed in." });
+  });
+
+  it("submitCounterOffer rejects when not signed in", async () => {
+    supabaseMock = makeSupabase({ user: null });
+    expect(await submitCounterOffer("booking-1", new FormData())).toEqual({ error: "You must be signed in." });
   });
 
   it("rejectBooking rejects when not signed in", async () => {
@@ -149,6 +193,187 @@ describe("createPackage / updatePackage", () => {
       category_id: "22222222-2222-2222-2222-222222222222",
       subcategory_id: null,
       city_id: "44444444-4444-4444-4444-444444444444",
+    });
+  });
+
+  it("persists address/working method/skill tags, splitting skill tags on comma", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    const result = await createPackage(
+      packageFormData({ address: "123 Main St", workingMethod: "Freelance", skillTags: "Guitar, Vocals ,  Piano" })
+    );
+    expect(result).toEqual({ success: true });
+    expect(supabaseMock.__inserted.packages).toMatchObject({
+      address: "123 Main St",
+      working_method: "Freelance",
+      skill_tags: ["Guitar", "Vocals", "Piano"],
+    });
+  });
+
+  it("stores null address/working method and an empty skill_tags array when omitted", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    await createPackage(packageFormData());
+    expect(supabaseMock.__inserted.packages).toMatchObject({
+      address: null,
+      working_method: null,
+      skill_tags: [],
+    });
+  });
+});
+
+describe("confirmBookingOffer", () => {
+  it("accepts the organizer's offer when it's the talent's turn, setting price_vnd and clearing the turn", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "talent",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 4_500_000,
+      },
+    });
+    const result = await confirmBookingOffer("booking-1");
+    expect(result).toEqual({ success: true });
+    expect(supabaseMock.__updated.package_bookings).toEqual({
+      status: "confirmed",
+      price_vnd: 4_500_000,
+      awaiting_response_from: null,
+    });
+  });
+
+  it("accepts the talent's offer when it's the organizer's turn", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "organizer",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 4_500_000,
+      },
+    });
+    const result = await confirmBookingOffer("booking-1");
+    expect(result).toEqual({ success: true });
+    expect(supabaseMock.__updated.package_bookings).toMatchObject({ price_vnd: 5_000_000 });
+  });
+
+  it("rejects when it isn't the caller's turn", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "organizer",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 4_500_000,
+      },
+    });
+    expect(await confirmBookingOffer("booking-1")).toEqual({ error: "It's not your turn to respond to this offer." });
+  });
+
+  it("rejects when the caller isn't part of the booking", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: "44444444-4444-4444-4444-444444444444" },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "talent",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 4_500_000,
+      },
+    });
+    expect(await confirmBookingOffer("booking-1")).toEqual({ error: "You are not part of this booking." });
+  });
+});
+
+describe("submitCounterOffer", () => {
+  it("sets the talent's new offer and flips the turn to the organizer", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "talent",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 4_500_000,
+      },
+    });
+    const formData = new FormData();
+    formData.set("offerVnd", "6000000");
+    const result = await submitCounterOffer("booking-1", formData);
+    expect(result).toEqual({ success: true });
+    expect(supabaseMock.__updated.package_bookings).toEqual({
+      talent_offer_vnd: 6_000_000,
+      awaiting_response_from: "organizer",
+      status: "dealing",
+    });
+  });
+
+  it("sets the organizer's new offer and flips the turn to the talent", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "organizer",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 4_500_000,
+      },
+    });
+    const formData = new FormData();
+    formData.set("offerVnd", "4800000");
+    const result = await submitCounterOffer("booking-1", formData);
+    expect(result).toEqual({ success: true });
+    expect(supabaseMock.__updated.package_bookings).toEqual({
+      organizer_offer_vnd: 4_800_000,
+      awaiting_response_from: "talent",
+      status: "dealing",
+    });
+  });
+
+  it("rejects a non-positive offer amount", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "talent",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 4_500_000,
+      },
+    });
+    const formData = new FormData();
+    formData.set("offerVnd", "0");
+    expect(await submitCounterOffer("booking-1", formData)).toEqual({ error: "Enter a valid offer amount." });
+  });
+
+  it("rejects when it isn't the caller's turn", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "organizer",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 4_500_000,
+      },
+    });
+    const formData = new FormData();
+    formData.set("offerVnd", "6000000");
+    expect(await submitCounterOffer("booking-1", formData)).toEqual({
+      error: "It's not your turn to respond to this offer.",
+    });
+  });
+});
+
+describe("rejectBooking", () => {
+  it("cancels the booking and clears the pending turn", async () => {
+    supabaseMock = makeSupabase({ user: { id: TALENT_ID } });
+    const result = await rejectBooking("booking-1");
+    expect(result).toEqual({ success: true });
+    expect(supabaseMock.__updated.package_bookings).toEqual({
+      status: "cancelled",
+      awaiting_response_from: null,
     });
   });
 });
