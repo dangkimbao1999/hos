@@ -15,6 +15,7 @@ export function toCardData(pkg: PackageWithTalent) {
     id: pkg.id,
     title: pkg.talent_name,
     category: pkg.sub_category ? `${pkg.category} · ${pkg.sub_category}` : pkg.category,
+    avatarUrl: pkg.talent_avatar_url,
     priceMin: pkg.price_min_vnd,
     priceMax: pkg.price_max_vnd,
     currency: "VND" as const,

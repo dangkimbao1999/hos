@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { withTalentInfo } from "@/lib/supabase/packages";
+import { isRelatedPackage, withTalentInfo } from "@/lib/supabase/packages";
 import { createClient } from "@/lib/supabase/server";
-import type { PackageRow } from "@/lib/supabase/types";
+import type { PackageRow, PackageWithTalent } from "@/lib/supabase/types";
 
 type FakeSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -10,6 +10,8 @@ interface FakeProfile {
   full_name: string;
   slug: string;
   keywords: string[];
+  avatar_url?: string | null;
+  genre?: string | null;
 }
 
 /**
@@ -67,14 +69,23 @@ describe("withTalentInfo", () => {
     expect(result).toEqual([]);
   });
 
-  test("joins each package with its talent's name/slug/keywords", async () => {
+  test("joins each package with its talent's name/slug/keywords/avatar/genre", async () => {
     const supabase = fakeSupabase([
-      { id: "talent-1", full_name: "Batch2 Talent", slug: "batch2-talent-abc", keywords: ["LiveBand"] },
+      {
+        id: "talent-1",
+        full_name: "Batch2 Talent",
+        slug: "batch2-talent-abc",
+        keywords: ["LiveBand"],
+        avatar_url: "https://example.com/avatar.jpg",
+        genre: "Rap",
+      },
     ]);
     const [result] = await withTalentInfo(supabase, [makePackageRow({ talent_id: "talent-1" })]);
     expect(result.talent_name).toBe("Batch2 Talent");
     expect(result.talent_slug).toBe("batch2-talent-abc");
     expect(result.talent_keywords).toEqual(["LiveBand"]);
+    expect(result.talent_avatar_url).toBe("https://example.com/avatar.jpg");
+    expect(result.talent_genre).toBe("Rap");
   });
 
   test("drops packages whose talent profile can't be found", async () => {
@@ -94,5 +105,33 @@ describe("withTalentInfo", () => {
     expect(result.id).toBe("pkg-42");
     expect(result.price_min_vnd).toBe(2_000_000);
     expect(result.is_most_popular).toBe(true);
+  });
+});
+
+function makeCandidate(overrides: Partial<Pick<PackageWithTalent, "category" | "talent_genre">> = {}) {
+  return { category: "Solo Singer", talent_genre: null as string | null, ...overrides };
+}
+
+describe("isRelatedPackage", () => {
+  test("matches when the package category is in the current talent's categories", () => {
+    expect(isRelatedPackage(makeCandidate({ category: "DJ" }), ["DJ", "Live Band"], null)).toBe(true);
+  });
+
+  test("matches when the talent's genre equals the candidate's genre", () => {
+    expect(isRelatedPackage(makeCandidate({ category: "Band", talent_genre: "Rap" }), ["Solo Singer"], "Rap")).toBe(
+      true
+    );
+  });
+
+  test("does not match when neither category nor genre overlap", () => {
+    expect(isRelatedPackage(makeCandidate({ category: "Band", talent_genre: "Jazz" }), ["Solo Singer"], "Rap")).toBe(
+      false
+    );
+  });
+
+  test("does not match on genre when both genres are null", () => {
+    expect(isRelatedPackage(makeCandidate({ category: "Band", talent_genre: null }), ["Solo Singer"], null)).toBe(
+      false
+    );
   });
 });

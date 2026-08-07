@@ -73,6 +73,8 @@ function makeRelatedPackage(overrides: Partial<PackageWithTalent> = {}): Package
     talent_name: "Related Real Talent",
     talent_slug: "related-real-talent",
     talent_keywords: [],
+    talent_avatar_url: null,
+    talent_genre: null,
     ...overrides,
   };
 }

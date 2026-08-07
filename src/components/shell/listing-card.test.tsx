@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { render, screen } from "@testing-library/react";
-import { formatPriceRange, ListingRow } from "@/components/shell/listing-card";
+import { formatPriceRange, ListingCard, ListingRow, SearchResultCard } from "@/components/shell/listing-card";
 
 describe("formatPriceRange", () => {
   test("formats VND with no dollar sign", () => {
@@ -36,5 +36,39 @@ describe("ListingRow", () => {
     render(<ListingRow data={sampleData} />);
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.getByText("A$AP Rocky")).toBeInTheDocument();
+  });
+
+  test("renders the real avatar image when avatarUrl is set", () => {
+    render(<ListingRow data={{ ...sampleData, avatarUrl: "https://example.com/avatar.jpg" }} />);
+    expect((screen.getByAltText("") as HTMLImageElement).src).toBe("https://example.com/avatar.jpg");
+  });
+
+  test("falls back to the placeholder icon when avatarUrl is absent", () => {
+    render(<ListingRow data={sampleData} />);
+    expect(screen.queryByAltText("")).not.toBeInTheDocument();
+  });
+});
+
+describe("ListingCard", () => {
+  test("renders the real avatar image when avatarUrl is set", () => {
+    render(<ListingCard data={{ ...sampleData, avatarUrl: "https://example.com/avatar.jpg" }} />);
+    expect((screen.getByAltText("") as HTMLImageElement).src).toBe("https://example.com/avatar.jpg");
+  });
+
+  test("falls back to the placeholder icon when avatarUrl is absent", () => {
+    render(<ListingCard data={sampleData} />);
+    expect(screen.queryByAltText("")).not.toBeInTheDocument();
+  });
+});
+
+describe("SearchResultCard", () => {
+  test("renders the real avatar image when avatarUrl is set", () => {
+    render(<SearchResultCard data={{ ...sampleData, avatarUrl: "https://example.com/avatar.jpg" }} />);
+    expect((screen.getByAltText("") as HTMLImageElement).src).toBe("https://example.com/avatar.jpg");
+  });
+
+  test("falls back to the placeholder icon when avatarUrl is absent", () => {
+    render(<SearchResultCard data={sampleData} />);
+    expect(screen.queryByAltText("")).not.toBeInTheDocument();
   });
 });
