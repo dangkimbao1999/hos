@@ -9,6 +9,7 @@ export function UploadSlot({
   filled,
   pending,
   error,
+  previewUrl,
   onFileSelected,
   onRemove,
   className,
@@ -17,6 +18,7 @@ export function UploadSlot({
   filled: boolean;
   pending?: boolean;
   error?: string;
+  previewUrl?: string;
   onFileSelected: (file: File) => void;
   onRemove?: () => void;
   className?: string;
@@ -31,20 +33,37 @@ export function UploadSlot({
           onClick={() => !filled && inputRef.current?.click()}
           disabled={pending}
           className={cn(
-            "flex size-full flex-col items-center justify-center gap-2 rounded-[8px] border border-dashed text-muted-foreground transition-colors",
+            "relative flex size-full flex-col items-center justify-center gap-2 overflow-hidden rounded-[8px] border border-dashed text-muted-foreground transition-colors",
             filled
               ? "border-primary bg-primary/5 text-foreground"
               : "border-white/15 bg-white/5 hover:bg-white/10"
           )}
         >
-          {pending ? <Loader2 className="size-6 animate-spin" /> : <ImagePlus className="size-6" />}
-          <span className="text-xs">{label}</span>
+          {previewUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={previewUrl} alt="" className="absolute inset-0 size-full object-cover" />
+          )}
+          <span
+            className={cn(
+              "relative flex flex-col items-center gap-2",
+              previewUrl && "rounded-md bg-black/60 px-3 py-2 text-white"
+            )}
+          >
+            {pending ? (
+              <Loader2 className="size-6 animate-spin" />
+            ) : (
+              !previewUrl && <ImagePlus className="size-6" />
+            )}
+            <span className="text-xs">{label}</span>
+          </span>
         </button>
         {filled && onRemove && (
           <button
             type="button"
             onClick={onRemove}
-            className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-black/60"
+            disabled={pending}
+            aria-label={`Remove ${label}`}
+            className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-black/60 disabled:opacity-50"
           >
             <X className="size-3" />
           </button>

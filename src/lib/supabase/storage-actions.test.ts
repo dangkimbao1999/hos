@@ -6,7 +6,13 @@ mock.module("@/lib/supabase/server", () => ({
   }),
 }));
 
-import { removeGalleryImage, uploadCover, uploadGalleryImage } from "@/lib/supabase/storage-actions";
+import {
+  removeEventPhoto,
+  removeGalleryImage,
+  uploadCover,
+  uploadEventPhoto,
+  uploadGalleryImage,
+} from "@/lib/supabase/storage-actions";
 
 describe("storage actions — signed-out guard", () => {
   it("uploadCover rejects when not signed in", async () => {
@@ -19,5 +25,13 @@ describe("storage actions — signed-out guard", () => {
 
   it("removeGalleryImage rejects when not signed in", async () => {
     expect(await removeGalleryImage(new FormData())).toEqual({ error: "You must be signed in." });
+  });
+
+  it("uploadEventPhoto rejects when not signed in", async () => {
+    expect(await uploadEventPhoto(new FormData())).toEqual({ error: "You must be signed in." });
+  });
+
+  it("removeEventPhoto rejects when not signed in", async () => {
+    expect(await removeEventPhoto(new FormData())).toEqual({ error: "You must be signed in." });
   });
 });

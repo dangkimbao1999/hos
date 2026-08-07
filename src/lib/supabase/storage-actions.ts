@@ -171,6 +171,65 @@ export async function removeGalleryImage(
   return { success: true };
 }
 
+export async function uploadEventPhoto(
+  formData: FormData
+): Promise<{ error: string } | { success: true; path: string; url: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
+
+  const validated = validateImage(formData.get("image"));
+  if ("error" in validated) return validated;
+  const { file } = validated;
+
+  const extensionByType: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+  };
+  const ext = extensionByType[file.type] ?? "jpg";
+  const path = `${user.id}/events/${crypto.randomUUID()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("profile-media")
+    .upload(path, file, { contentType: file.type });
+  if (uploadError) return { error: uploadError.message };
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("profile-media").getPublicUrl(path);
+
+  return { success: true, path, url: publicUrl };
+}
+
+export async function removeEventPhoto(
+  formData: FormData
+): Promise<{ error: string } | { success: true }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
+
+  const path = String(formData.get("path") ?? "");
+  const prefix = `${user.id}/events/`;
+  const filename = path.slice(prefix.length);
+  if (!path.startsWith(prefix) || !/^[0-9a-f-]+\.(?:png|jpg|webp)$/i.test(filename)) {
+    return { error: "Invalid event photo." };
+  }
+
+  const { error } = await supabase.storage.from("profile-media").remove([path]);
+  if (error) return { error: error.message };
+
+  return { success: true };
+}
+
 /** Uploads a KYC ID/selfie image to the private kyc-documents bucket. Returns the storage path (not a URL — the bucket isn't public). */
 export async function uploadKycDocument(
   formData: FormData

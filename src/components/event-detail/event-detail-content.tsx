@@ -28,7 +28,12 @@ export function EventDetailContent({
     <div className="flex flex-col gap-6 py-8">
       <div className="relative flex h-[280px] w-full flex-col justify-end overflow-hidden rounded-md">
         <div className="absolute inset-0 flex items-center justify-center bg-white/10 text-muted-foreground">
-          <ImageIcon className="size-10" />
+          {event.photo_urls[0] ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={event.photo_urls[0]} alt="" className="size-full object-cover" />
+          ) : (
+            <ImageIcon className="size-10" />
+          )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
         <div className="relative flex flex-col gap-2 p-8">
@@ -71,7 +76,16 @@ export function EventDetailContent({
 
               <div className="flex flex-col gap-3">
                 <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-md bg-white/10 text-muted-foreground">
-                  <ImageIcon className="size-10" />
+                  {event.photo_urls[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={event.photo_urls[0]}
+                      alt={`${event.name} photo 1`}
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <ImageIcon className="size-10" />
+                  )}
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   {[0, 1, 2].map((i) => (
@@ -79,7 +93,16 @@ export function EventDetailContent({
                       key={i}
                       className="flex aspect-video items-center justify-center overflow-hidden rounded-md bg-white/10 text-muted-foreground"
                     >
-                      <ImageIcon className="size-6" />
+                      {event.photo_urls[i] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={event.photo_urls[i]}
+                          alt={`${event.name} photo ${i + 1}`}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="size-6" />
+                      )}
                     </div>
                   ))}
                 </div>
