@@ -9,12 +9,12 @@ mock.module("@/components/talent-detail/request-quote-dialog", () => ({
 }));
 
 import { TalentDetailContent } from "@/components/talent-detail/talent-detail-content";
-import type { PackageRow, PackageWithTalent, Profile } from "@/lib/supabase/types";
+import type { PackageWithLookupNames, PackageWithTalent, ProfileWithLookupNames } from "@/lib/supabase/types";
 import type { TalentReviewSummary } from "@/lib/supabase/reviews";
 
 afterEach(() => cleanup());
 
-function makeTalent(overrides: Partial<Profile> = {}): Profile {
+function makeTalent(overrides: Partial<ProfileWithLookupNames> = {}): ProfileWithLookupNames {
   return {
     id: "talent-1",
     role: "talent",
@@ -22,7 +22,8 @@ function makeTalent(overrides: Partial<Profile> = {}): Profile {
     full_name: "Test Talent",
     avatar_url: null,
     bio: "A great performer.",
-    location: null,
+    city_id: null,
+    city_name: null,
     keywords: [],
     kyc_status: "verified",
     notifications_read_at: null,
@@ -33,22 +34,30 @@ function makeTalent(overrides: Partial<Profile> = {}): Profile {
     achievements: [],
     services: [],
     date_of_birth: null,
-    genre: null,
+    genre_id: null,
+    genre_name: null,
+    category_id: null,
+    category_name: null,
+    subcategory_id: null,
+    subcategory_name: null,
     ...overrides,
   };
 }
 
 const reviewSummary: TalentReviewSummary = { avgRating: 4.8, count: 0, reviews: [] };
 
-function makePackage(overrides: Partial<PackageRow> = {}): PackageRow {
+function makePackage(overrides: Partial<PackageWithLookupNames> = {}): PackageWithLookupNames {
   return {
     id: "pkg-1",
     talent_id: "talent-1",
-    category: "DJ",
-    sub_category: null,
+    category_id: "cat-dj",
+    subcategory_id: null,
+    category_name: "DJ",
+    subcategory_name: null,
     title: "Festival set",
     residency: null,
-    location: "HCM City",
+    city_id: "city-hcm",
+    city_name: "HCM City",
     repeat_on: false,
     repeat_days: null,
     start_date: "2026-08-01",
@@ -74,7 +83,7 @@ function makeRelatedPackage(overrides: Partial<PackageWithTalent> = {}): Package
     talent_slug: "related-real-talent",
     talent_keywords: [],
     talent_avatar_url: null,
-    talent_genre: null,
+    talent_genre_name: null,
     ...overrides,
   };
 }
@@ -113,7 +122,7 @@ describe("TalentDetailContent — Overview tab", () => {
       <TalentDetailContent
         talent={makeTalent({ bio: "The real talent biography." })}
         packages={[makePackage()]}
-        relatedPackages={[makeRelatedPackage({ category: "Live Band" })]}
+        relatedPackages={[makeRelatedPackage({ category_name: "Live Band" })]}
         reviewSummary={reviewSummary}
       />
     );
@@ -131,9 +140,9 @@ describe("TalentDetailContent — About Talent tab", () => {
     render(
       <TalentDetailContent
         talent={makeTalent({
-          location: "Harlem, New York, United State",
+          city_name: "Harlem, New York, United State",
           date_of_birth: "1988-10-03",
-          genre: "US/UK Hiphop/Rap",
+          genre_name: "US/UK Hiphop/Rap",
           social_links: [{ platform: "Instagram", url: "https://instagram.com/asaprocky" }],
           achievements: [{ title: "2023 Nominee - BET Award", subtitle: "Video Director of the Year" }],
         })}

@@ -15,10 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { talentCategories, type Role } from "@/lib/nav-items";
+import type { Role } from "@/lib/nav-items";
 import { mockRoster, mockRosterByCategory } from "@/lib/mock-roster";
 import { createPackage, updatePackage } from "@/lib/supabase/package-actions";
-import type { PackageRow } from "@/lib/supabase/types";
+import type { CategoryOption, LookupOption, PackageRow } from "@/lib/supabase/types";
 import { runAction } from "@/lib/toast-action";
 
 type Step = "choose-talent" | "form" | "success";
@@ -36,28 +36,35 @@ function SelectField({
   label,
   name,
   options,
+  value,
   defaultValue,
+  onChange,
 }: {
   label: string;
   name: string;
-  options: string[];
+  options: string[] | LookupOption[];
+  value?: string;
   defaultValue?: string;
+  onChange?: (value: string) => void;
 }) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
+  const normalized = options.map((o) => (typeof o === "string" ? { id: o, name: o } : o));
   return (
     <select
       id={id}
       name={name}
       aria-label={label}
-      defaultValue={defaultValue ?? ""}
+      value={value}
+      defaultValue={value === undefined ? (defaultValue ?? "") : undefined}
+      onChange={onChange ? (e) => onChange(e.target.value) : undefined}
       className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <option value="" disabled>
         {label}
       </option>
-      {options.map((o) => (
-        <option key={o} value={o} className="bg-background text-foreground">
-          {o}
+      {normalized.map((o) => (
+        <option key={o.id} value={o.id} className="bg-background text-foreground">
+          {o.name}
         </option>
       ))}
     </select>
@@ -69,17 +76,22 @@ export function CreatePackageDialog({
   open,
   onOpenChange,
   editingPackage,
+  categories,
+  cities,
 }: {
   role: Role;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** When present, the dialog edits this package instead of creating a new one. */
   editingPackage?: PackageRow;
+  categories: CategoryOption[];
+  cities: LookupOption[];
 }) {
   const isAgency = role === "agency";
   const isEditing = !isAgency && !!editingPackage;
   const [step, setStep] = useState<Step>(isAgency ? "choose-talent" : "form");
   const [selectedTalentId, setSelectedTalentId] = useState(mockRoster[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState(editingPackage?.category_id ?? "");
   const [repeatOn, setRepeatOn] = useState(editingPackage?.repeat_on ?? true);
   const [selectedDays, setSelectedDays] = useState<string[]>(editingPackage?.repeat_days ?? ["SAT", "SUN"]);
   const [paymentMethod, setPaymentMethod] = useState<"Prepaid" | "Postpaid">(
@@ -201,15 +213,17 @@ export function CreatePackageDialog({
               <div className="grid grid-cols-2 gap-3">
                 <SelectField
                   label="Category"
-                  name="category"
-                  options={talentCategories.map((c) => c.label)}
-                  defaultValue={editingPackage?.category}
+                  name="categoryId"
+                  options={categories}
+                  value={categoryId}
+                  onChange={setCategoryId}
                 />
                 <SelectField
+                  key={categoryId}
                   label="Sub-Category"
-                  name="subCategory"
-                  options={["Rapper", "Ballad", "RnB", "Bolero"]}
-                  defaultValue={editingPackage?.sub_category ?? undefined}
+                  name="subcategoryId"
+                  options={categories.find((c) => c.id === categoryId)?.subcategories ?? []}
+                  defaultValue={editingPackage?.subcategory_id ?? undefined}
                 />
               </div>
 
@@ -224,9 +238,9 @@ export function CreatePackageDialog({
                 />
                 <SelectField
                   label="Location"
-                  name="location"
-                  options={["HCM City", "Hanoi", "Da Nang"]}
-                  defaultValue={editingPackage?.location}
+                  name="cityId"
+                  options={cities}
+                  defaultValue={editingPackage?.city_id}
                 />
               </div>
 

@@ -28,11 +28,11 @@ function makePackage(overrides: Partial<PackageRow & { bookingCount: number }> =
   return {
     id: "pkg-1",
     talent_id: "talent-1",
-    category: "Solo Singer",
-    sub_category: "Rapper",
+    category_id: "cat-solo-singer",
+    subcategory_id: "cat-rapper",
     title: "Acoustic Set",
     residency: null,
-    location: "Ho Chi Minh City",
+    city_id: "city-hcm",
     repeat_on: false,
     repeat_days: null,
     start_date: "2026-12-01",
@@ -55,7 +55,7 @@ function makePackage(overrides: Partial<PackageRow & { bookingCount: number }> =
 describe("PackagesContent — toasts", () => {
   it("shows a success toast when a package is deleted", async () => {
     (globalThis as { confirm?: () => boolean }).confirm = () => true;
-    render(<PackagesContent role="talent" packages={[makePackage()]} />);
+    render(<PackagesContent role="talent" packages={[makePackage()]} categories={[]} cities={[]} />);
     fireEvent.click(screen.getByRole("button", { name: /delete/i }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(toastCalls).toContainEqual({ type: "success", message: "Package deleted." });

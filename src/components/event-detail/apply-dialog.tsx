@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { formatEventDay, formatTimeRange } from "@/lib/format";
 import { applyToSlot } from "@/lib/supabase/event-actions";
-import type { EventSlotRow, EventWithSlots } from "@/lib/supabase/types";
+import type { EventWithSlots } from "@/lib/supabase/types";
 import { runAction } from "@/lib/toast-action";
 import type { Role } from "@/lib/nav-items";
 import { mockRoster, mockRosterByCategory } from "@/lib/mock-roster";
@@ -30,7 +30,7 @@ export function ApplyDialog({
   onOpenChange,
 }: {
   event: EventWithSlots;
-  slot: EventSlotRow;
+  slot: EventWithSlots["slots"][number];
   role: Role;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -119,7 +119,7 @@ export function ApplyDialog({
           <>
             <DialogHeader>
               <div className="flex items-center justify-between pr-6">
-                <DialogTitle>{slot.category}</DialogTitle>
+                <DialogTitle>{slot.category_name}</DialogTitle>
                 <span className="text-lg font-bold text-foreground">${slot.price_usd}</span>
               </div>
             </DialogHeader>
@@ -161,7 +161,7 @@ export function ApplyDialog({
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground uppercase">Location</span>
                 <span className="font-medium text-foreground">
-                  {event.organizer.location || event.address}
+                  {event.organizer.city_name || event.address}
                 </span>
               </div>
               {event.contact_phone && (

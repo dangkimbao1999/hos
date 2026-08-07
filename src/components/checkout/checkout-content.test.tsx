@@ -31,7 +31,7 @@ function makeCartItem(overrides: Partial<CartItemWithPackage> = {}): CartItemWit
     booked_date: "2026-12-01",
     booked_time: "20:00",
     created_at: new Date().toISOString(),
-    package: { id: "pkg-1", title: "Acoustic Set", location: "Ho Chi Minh City" },
+    package: { id: "pkg-1", title: "Acoustic Set", city_name: "Ho Chi Minh City" },
     talent: { id: "talent-1", full_name: "Test Talent" },
     ...overrides,
   };

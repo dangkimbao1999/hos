@@ -1,3 +1,4 @@
+import { mapLookupNames } from "@/lib/supabase/lookups";
 import { createClient } from "@/lib/supabase/server";
 import type {
   EventApplicationWithDetails,
@@ -16,15 +17,31 @@ export async function getEventBySlug(slug: string): Promise<EventWithSlots | nul
     supabase.from("event_slots").select("*").eq("event_id", event.id).order("created_at"),
     supabase
       .from("profiles")
-      .select("full_name, location, bio, gallery_urls, social_links")
+      .select("full_name, city_id, bio, gallery_urls, social_links")
       .eq("id", event.organizer_id)
       .single(),
   ]);
 
+  const [cityNames, categoryNames] = await Promise.all([
+    mapLookupNames(supabase, "cities", [organizer?.city_id]),
+    mapLookupNames(supabase, "categories", (slots ?? []).map((s) => s.category_id)),
+  ]);
+
   return {
     ...event,
-    slots: slots ?? [],
-    organizer: organizer ?? { full_name: "", location: null, bio: null, gallery_urls: [], social_links: [] },
+    slots: (slots ?? []).map((slot) => ({
+      ...slot,
+      category_name: categoryNames.get(slot.category_id) ?? "",
+    })),
+    organizer: organizer
+      ? {
+          full_name: organizer.full_name,
+          bio: organizer.bio,
+          gallery_urls: organizer.gallery_urls,
+          social_links: organizer.social_links,
+          city_name: organizer.city_id ? (cityNames.get(organizer.city_id) ?? null) : null,
+        }
+      : { full_name: "", city_name: null, bio: null, gallery_urls: [], social_links: [] },
   };
 }
 
@@ -71,7 +88,7 @@ export async function listApplicationsForOrganizer(
 
   const { data: slots } = await supabase
     .from("event_slots")
-    .select("id, event_id, category, price_usd")
+    .select("id, event_id, category_id, price_usd")
     .in("event_id", myEvents.map((e) => e.id));
   if (!slots || slots.length === 0) return [];
   const slotById = new Map(slots.map((s) => [s.id, s]));
@@ -86,13 +103,14 @@ export async function listApplicationsForOrganizer(
   const applicantIds = [...new Set(applications.map((a) => a.applicant_profile_id))];
   const { data: applicants } = await supabase.from("profiles").select("id, full_name").in("id", applicantIds);
   const applicantNameById = new Map((applicants ?? []).map((p) => [p.id, p.full_name]));
+  const categoryNames = await mapLookupNames(supabase, "categories", slots.map((s) => s.category_id));
 
   return applications.map((app) => {
     const slot = slotById.get(app.slot_id);
     const event = slot ? eventById.get(slot.event_id) : undefined;
     return {
       ...app,
-      slot_category: slot?.category ?? "",
+      slot_category: (slot && categoryNames.get(slot.category_id)) ?? "",
       slot_price_usd: slot?.price_usd ?? 0,
       event_id: slot?.event_id ?? "",
       event_name: event?.name ?? "",

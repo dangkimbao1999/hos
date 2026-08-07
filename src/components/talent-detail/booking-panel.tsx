@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { addToCart } from "@/lib/supabase/package-actions";
-import type { PackageRow } from "@/lib/supabase/types";
+import type { PackageRow, PackageWithLookupNames } from "@/lib/supabase/types";
 import { runAction } from "@/lib/toast-action";
 
 function formatVnd(amount: number) {
@@ -31,7 +31,7 @@ export function BookingPanel({
   packages,
 }: {
   talentName: string;
-  packages: PackageRow[];
+  packages: PackageWithLookupNames[];
 }) {
   const router = useRouter();
   const [selectedPackage, setSelectedPackage] = useState(0);
@@ -118,7 +118,7 @@ export function BookingPanel({
                   <span className="text-sm font-medium text-foreground">{pkg.title}</span>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="rounded-full bg-white/10 px-2 py-1 text-muted-foreground">LOCATION</span>
-                    <span className="font-medium text-foreground">{pkg.location}</span>
+                    <span className="font-medium text-foreground">{pkg.city_name}</span>
                   </div>
                 </div>
               </Label>

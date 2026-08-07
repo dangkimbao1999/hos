@@ -14,22 +14,25 @@ mock.module("@/lib/supabase/package-actions", () => ({
 }));
 
 import { BookingPanel } from "@/components/talent-detail/booking-panel";
-import type { PackageRow } from "@/lib/supabase/types";
+import type { PackageWithLookupNames } from "@/lib/supabase/types";
 
 afterEach(() => {
   cleanup();
   toastCalls.length = 0;
 });
 
-function makePackage(overrides: Partial<PackageRow> = {}): PackageRow {
+function makePackage(overrides: Partial<PackageWithLookupNames> = {}): PackageWithLookupNames {
   return {
     id: "pkg-1",
     talent_id: "talent-1",
-    category: "Solo Singer",
-    sub_category: "Rapper",
+    category_id: "cat-solo-singer",
+    subcategory_id: "cat-rapper",
+    category_name: "Solo Singer",
+    subcategory_name: "Rapper",
     title: "Acoustic Set",
     residency: null,
-    location: "Ho Chi Minh City",
+    city_id: "city-hcm",
+    city_name: "Ho Chi Minh City",
     repeat_on: false,
     repeat_days: null,
     start_date: "2026-12-01",

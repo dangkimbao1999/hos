@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { talentCategories, type Role } from "@/lib/nav-items";
+import type { Role } from "@/lib/nav-items";
 import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
 import { updateProfile } from "@/lib/supabase/profile-actions";
 import { removeGalleryImage, uploadAvatar, uploadCover, uploadGalleryImage } from "@/lib/supabase/storage-actions";
-import type { CurrentUser } from "@/lib/supabase/types";
+import type { CategoryOption, CurrentUser, LookupOption } from "@/lib/supabase/types";
 import { runAction } from "@/lib/toast-action";
 import { cn } from "@/lib/utils";
 
@@ -28,8 +28,21 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<"in
   );
 }
 
-export function ProfileContent({ role, profile }: { role: Role; profile: CurrentUser }) {
+export function ProfileContent({
+  role,
+  profile,
+  categories,
+  cities,
+  genres,
+}: {
+  role: Role;
+  profile: CurrentUser;
+  categories: CategoryOption[];
+  cities: LookupOption[];
+  genres: LookupOption[];
+}) {
   const router = useRouter();
+  const [categoryId, setCategoryId] = useState(profile.category_id ?? "");
   const [keywords, setKeywords] = useState<string[]>(profile.keywords ?? []);
   const [keywordInput, setKeywordInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -251,18 +264,35 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
           <Field label="Email" type="email" defaultValue={profile.email} disabled />
           <Field label="Phone number" type="tel" defaultValue="+84 90 123 4567" />
           <Field label="District" defaultValue="District 1" />
-          <Field label="City/Province" name="location" defaultValue={profile.location ?? ""} />
+          <div className="flex flex-col gap-2">
+            <Label className="text-sm text-muted-foreground">City/Province</Label>
+            <select
+              name="cityId"
+              defaultValue={profile.city_id ?? ""}
+              className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <option value="" className="bg-background" />
+              {cities.map((city) => (
+                <option key={city.id} value={city.id} className="bg-background">
+                  {city.name}
+                </option>
+              ))}
+            </select>
+          </div>
           {role === "talent" && (
             <>
               <div className="flex flex-col gap-2">
                 <Label className="text-sm text-muted-foreground">Category</Label>
                 <select
-                  defaultValue="Solo Singer"
+                  name="categoryId"
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
                   className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
-                  {talentCategories.map((c) => (
-                    <option key={c.label} value={c.label} className="bg-background">
-                      {c.label}
+                  <option value="" className="bg-background" />
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-background">
+                      {c.name}
                     </option>
                   ))}
                 </select>
@@ -270,12 +300,15 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
               <div className="flex flex-col gap-2">
                 <Label className="text-sm text-muted-foreground">Sub-Category</Label>
                 <select
-                  defaultValue="Rapper"
+                  key={categoryId}
+                  name="subcategoryId"
+                  defaultValue={profile.subcategory_id ?? ""}
                   className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
-                  {["Rapper", "Ballad", "RnB", "Bolero"].map((s) => (
-                    <option key={s} value={s} className="bg-background">
-                      {s}
+                  <option value="" className="bg-background" />
+                  {(categories.find((c) => c.id === categoryId)?.subcategories ?? []).map((s) => (
+                    <option key={s.id} value={s.id} className="bg-background">
+                      {s.name}
                     </option>
                   ))}
                 </select>
@@ -286,12 +319,21 @@ export function ProfileContent({ role, profile }: { role: Role; profile: Current
                 type="date"
                 defaultValue={profile.date_of_birth ?? ""}
               />
-              <Field
-                label="Genre"
-                name="genre"
-                defaultValue={profile.genre ?? ""}
-                placeholder="e.g. US/UK Hiphop/Rap"
-              />
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm text-muted-foreground">Genre</Label>
+                <select
+                  name="genreId"
+                  defaultValue={profile.genre_id ?? ""}
+                  className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <option value="" className="bg-background" />
+                  {genres.map((genre) => (
+                    <option key={genre.id} value={genre.id} className="bg-background">
+                      {genre.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </>
           )}
         </div>

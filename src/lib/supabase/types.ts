@@ -12,6 +12,17 @@ export interface Achievement {
   subtitle: string;
 }
 
+/** A row from an admin-managed static lookup table (cities, genres, or categories/subcategories). */
+export interface LookupOption {
+  id: string;
+  name: string;
+}
+
+/** A top-level category with its (possibly empty) subcategories — from the self-referencing categories table. */
+export interface CategoryOption extends LookupOption {
+  subcategories: LookupOption[];
+}
+
 export interface Profile {
   id: string;
   role: Role;
@@ -19,7 +30,7 @@ export interface Profile {
   full_name: string;
   avatar_url: string | null;
   bio: string | null;
-  location: string | null;
+  city_id: string | null;
   keywords: string[];
   kyc_status: KycStatus;
   notifications_read_at: string | null;
@@ -30,12 +41,22 @@ export interface Profile {
   achievements: Achievement[];
   services: string[];
   date_of_birth: string | null;
-  genre: string | null;
+  genre_id: string | null;
+  category_id: string | null;
+  subcategory_id: string | null;
 }
 
 /** Profile row plus the auth email, which lives on auth.users, not profiles. */
 export interface CurrentUser extends Profile {
   email: string;
+}
+
+/** Profile plus resolved lookup display names — for read-only public display (e.g. the Talent detail page), as opposed to edit forms which need the raw *_id to preselect the right <option>. */
+export interface ProfileWithLookupNames extends Profile {
+  city_name: string | null;
+  genre_name: string | null;
+  category_name: string | null;
+  subcategory_name: string | null;
 }
 
 export type EventStatus = "upcoming" | "completed" | "cancelled";
@@ -65,7 +86,7 @@ export interface EventRow {
 export interface EventSlotRow {
   id: string;
   event_id: string;
-  category: string;
+  category_id: string;
   price_usd: number;
   slot_type: string;
   quantity_total: number;
@@ -105,10 +126,12 @@ export interface EventListingSummary {
   photo_urls: string[];
 }
 
-/** Full event detail: the event row, its slots, and the organizer's profile. */
+/** Full event detail: the event row, its slots (with resolved category name), and the organizer's profile. */
 export interface EventWithSlots extends EventRow {
-  slots: EventSlotRow[];
-  organizer: Pick<Profile, "full_name" | "location" | "bio" | "gallery_urls" | "social_links">;
+  slots: (EventSlotRow & { category_name: string })[];
+  organizer: Pick<Profile, "full_name" | "bio" | "gallery_urls" | "social_links"> & {
+    city_name: string | null;
+  };
 }
 
 /** An application joined with its slot/event/applicant info — for the organizer's review UI. */
@@ -127,11 +150,11 @@ export type PackageStatus = "active" | "closed";
 export interface PackageRow {
   id: string;
   talent_id: string;
-  category: string;
-  sub_category: string | null;
+  category_id: string;
+  subcategory_id: string | null;
   title: string;
   residency: string | null;
-  location: string;
+  city_id: string;
   repeat_on: boolean;
   repeat_days: string[] | null;
   start_date: string;
@@ -149,13 +172,23 @@ export interface PackageRow {
   created_at: string;
 }
 
-/** An active package joined with its talent's name/slug — for the organizer Discover grid. */
+/** A package with its city/category/subcategory ids resolved to display names — for the public Talent detail page's own package list. */
+export interface PackageWithLookupNames extends PackageRow {
+  category_name: string;
+  subcategory_name: string | null;
+  city_name: string;
+}
+
+/** An active package joined with its talent's name/slug and resolved lookup names — for the organizer Discover grid. */
 export interface PackageWithTalent extends PackageRow {
   talent_name: string;
   talent_slug: string;
   talent_keywords: string[];
   talent_avatar_url: string | null;
-  talent_genre: string | null;
+  talent_genre_name: string | null;
+  category_name: string;
+  subcategory_name: string | null;
+  city_name: string;
 }
 
 export interface CartItemRow {
@@ -170,7 +203,7 @@ export interface CartItemRow {
 
 /** A cart item joined with its package + the talent who owns it — for the cart popover/checkout page. */
 export interface CartItemWithPackage extends CartItemRow {
-  package: Pick<PackageRow, "id" | "title" | "location">;
+  package: Pick<PackageRow, "id" | "title"> & { city_name: string };
   talent: Pick<Profile, "id" | "full_name">;
 }
 

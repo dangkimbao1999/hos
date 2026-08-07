@@ -15,11 +15,11 @@ export async function createPackage(
   const kycError = await assertKycVerified(supabase, user.id);
   if (kycError) return kycError;
 
-  const category = String(formData.get("category") ?? "");
-  const subCategory = String(formData.get("subCategory") ?? "") || null;
+  const categoryId = String(formData.get("categoryId") ?? "");
+  const subcategoryId = String(formData.get("subcategoryId") ?? "") || null;
   const title = String(formData.get("title") ?? "");
   const residency = String(formData.get("residency") ?? "") || null;
-  const location = String(formData.get("location") ?? "");
+  const cityId = String(formData.get("cityId") ?? "");
   const repeatOn = formData.get("repeatOn") === "true";
   const repeatDaysRaw = String(formData.get("repeatDays") ?? "");
   const repeatDays = repeatOn && repeatDaysRaw ? repeatDaysRaw.split(",") : null;
@@ -34,11 +34,11 @@ export async function createPackage(
 
   const { error } = await supabase.from("packages").insert({
     talent_id: user.id,
-    category,
-    sub_category: subCategory,
+    category_id: categoryId,
+    subcategory_id: subcategoryId,
     title,
     residency,
-    location,
+    city_id: cityId,
     repeat_on: repeatOn,
     repeat_days: repeatDays,
     start_date: startDate,
@@ -68,11 +68,11 @@ export async function updatePackage(
   const kycError = await assertKycVerified(supabase, user.id);
   if (kycError) return kycError;
 
-  const category = String(formData.get("category") ?? "");
-  const subCategory = String(formData.get("subCategory") ?? "") || null;
+  const categoryId = String(formData.get("categoryId") ?? "");
+  const subcategoryId = String(formData.get("subcategoryId") ?? "") || null;
   const title = String(formData.get("title") ?? "");
   const residency = String(formData.get("residency") ?? "") || null;
-  const location = String(formData.get("location") ?? "");
+  const cityId = String(formData.get("cityId") ?? "");
   const repeatOn = formData.get("repeatOn") === "true";
   const repeatDaysRaw = String(formData.get("repeatDays") ?? "");
   const repeatDays = repeatOn && repeatDaysRaw ? repeatDaysRaw.split(",") : null;
@@ -88,11 +88,11 @@ export async function updatePackage(
   const { error } = await supabase
     .from("packages")
     .update({
-      category,
-      sub_category: subCategory,
+      category_id: categoryId,
+      subcategory_id: subcategoryId,
       title,
       residency,
-      location,
+      city_id: cityId,
       repeat_on: repeatOn,
       repeat_days: repeatDays,
       start_date: startDate,

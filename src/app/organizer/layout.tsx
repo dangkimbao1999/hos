@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/shell/app-shell";
+import { listCategories, listCities } from "@/lib/supabase/lookups";
 import { listNotifications } from "@/lib/supabase/notifications";
 import { listCartItems } from "@/lib/supabase/packages";
 import { getCurrentProfile } from "@/lib/supabase/server";
@@ -9,9 +10,11 @@ export default async function OrganizerLayout({ children }: { children: React.Re
   if (!profile) redirect("/sign-in");
   if (profile.role !== "organizer") redirect(`/${profile.role}`);
 
-  const [cartItems, notifications] = await Promise.all([
+  const [cartItems, notifications, categories, cities] = await Promise.all([
     listCartItems(profile.id),
     listNotifications(profile.id, "organizer", profile.notifications_read_at),
+    listCategories(),
+    listCities(),
   ]);
 
   return (
@@ -22,6 +25,8 @@ export default async function OrganizerLayout({ children }: { children: React.Re
       kycStatus={profile.kyc_status}
       cartItems={cartItems}
       notifications={notifications}
+      categories={categories}
+      cities={cities}
     >
       {children}
     </AppShell>

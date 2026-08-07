@@ -137,10 +137,10 @@ export function EventDetailContent({
                   {event.organizer.full_name || "Organizer"}
                 </h2>
                 <div className="flex flex-col gap-3 rounded-md bg-white/5 p-5">
-                  {event.organizer.location && (
+                  {event.organizer.city_name && (
                     <div className="flex items-center gap-3 text-sm text-foreground">
                       <MapPin className="size-4 shrink-0 text-muted-foreground" />
-                      {event.organizer.location}
+                      {event.organizer.city_name}
                     </div>
                   )}
                   {event.contact_phone && (
