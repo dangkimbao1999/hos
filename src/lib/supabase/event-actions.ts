@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { assertKycVerified } from "@/lib/supabase/kyc";
+import { parseEventPhotoPaths } from "@/lib/supabase/event-photo-validation";
 
 function slugify(name: string): string {
   const base = name
@@ -45,6 +46,11 @@ export async function createEvent(
   const budgetMaxVnd = Number(formData.get("budgetMax") ?? 0) || null;
   const expectedGuests = Number(formData.get("guests") ?? 0) || null;
   const specialRequirements = String(formData.get("requirements") ?? "") || null;
+  const parsedPhotos = parseEventPhotoPaths(formData.get("photoPaths"), user.id);
+  if ("error" in parsedPhotos) return parsedPhotos;
+  const photoUrls = parsedPhotos.paths.map(
+    (path) => supabase.storage.from("profile-media").getPublicUrl(path).data.publicUrl
+  );
 
   const slotsRaw = String(formData.get("slots") ?? "[]");
   let parsedSlots: { category: string; priceUsd: string; quantity: string }[];
@@ -82,6 +88,7 @@ export async function createEvent(
       budget_max_vnd: budgetMaxVnd,
       expected_guests: expectedGuests,
       special_requirements: specialRequirements,
+      photo_urls: photoUrls,
     })
     .select()
     .single();

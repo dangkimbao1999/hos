@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { CheckCircle2, ImagePlus, Plus, Trash2, X } from "lucide-react";
+import { CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { UploadSlot } from "@/components/shared/upload-slot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { talentCategories } from "@/lib/nav-items";
 import { createEvent } from "@/lib/supabase/event-actions";
+import { removeEventPhoto, uploadEventPhoto } from "@/lib/supabase/storage-actions";
 
 const STEPS = ["Event Details", "Add Photos", "Review & Budget"] as const;
 type Step = (typeof STEPS)[number];
@@ -33,6 +35,13 @@ interface FormValues {
   requirements: string;
 }
 
+interface EventPhoto {
+  path: string | null;
+  url: string | null;
+  pending: boolean;
+  error?: string;
+}
+
 const INITIAL_VALUES: FormValues = {
   eventName: "",
   date: "",
@@ -44,6 +53,8 @@ const INITIAL_VALUES: FormValues = {
   guests: "",
   requirements: "",
 };
+
+const EMPTY_EVENT_PHOTO: EventPhoto = { path: null, url: null, pending: false };
 
 function emptySlot(): SlotValues {
   return { key: crypto.randomUUID(), category: "", priceUsd: "", quantity: "1" };
@@ -66,7 +77,9 @@ export default function CreateEventPage() {
   const [done, setDone] = useState(false);
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES);
   const [slots, setSlots] = useState<SlotValues[]>([emptySlot()]);
-  const [photos, setPhotos] = useState<number[]>([]);
+  const [photos, setPhotos] = useState<EventPhoto[]>(() =>
+    Array.from({ length: 3 }, () => ({ ...EMPTY_EVENT_PHOTO }))
+  );
   const [error, setError] = useState<string | undefined>();
   const [pending, setPending] = useState(false);
 
@@ -112,6 +125,10 @@ export default function CreateEventPage() {
     formData.set("guests", values.guests);
     formData.set("requirements", values.requirements);
     formData.set(
+      "photoPaths",
+      JSON.stringify(photos.flatMap((photo) => (photo.path ? [photo.path] : [])))
+    );
+    formData.set(
       "slots",
       JSON.stringify(
         slots.map((s) => ({ category: s.category, priceUsd: s.priceUsd, quantity: s.quantity }))
@@ -127,11 +144,37 @@ export default function CreateEventPage() {
     setDone(true);
   }
 
-  function addPhoto() {
-    setPhotos((p) => (p.length < 3 ? [...p, p.length] : p));
+  function updatePhoto(index: number, photo: EventPhoto) {
+    setPhotos((current) => current.map((item, itemIndex) => (itemIndex === index ? photo : item)));
   }
-  function removePhoto(index: number) {
-    setPhotos((p) => p.filter((i) => i !== index));
+
+  function uploadPhoto(index: number) {
+    return async (file: File) => {
+      updatePhoto(index, { path: null, url: null, pending: true });
+      const formData = new FormData();
+      formData.set("image", file);
+      const result = await uploadEventPhoto(formData);
+      if ("error" in result) {
+        updatePhoto(index, { path: null, url: null, pending: false, error: result.error });
+      } else {
+        updatePhoto(index, { path: result.path, url: result.url, pending: false });
+      }
+    };
+  }
+
+  async function removePhoto(index: number) {
+    const photo = photos[index];
+    if (!photo.path) return;
+
+    updatePhoto(index, { ...photo, pending: true, error: undefined });
+    const formData = new FormData();
+    formData.set("path", photo.path);
+    const result = await removeEventPhoto(formData);
+    if ("error" in result) {
+      updatePhoto(index, { ...photo, pending: false, error: result.error });
+    } else {
+      updatePhoto(index, { ...EMPTY_EVENT_PHOTO });
+    }
   }
 
   if (done) {
@@ -241,43 +284,30 @@ export default function CreateEventPage() {
               <p className="text-sm text-muted-foreground">Add up to 3 photos of your venue or event</p>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              {[0, 1, 2].map((i) => {
-                const filled = photos.includes(i);
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => (filled ? removePhoto(i) : addPhoto())}
-                    className={cn(
-                      "relative flex aspect-square flex-col items-center justify-center gap-2 rounded-[8px] border border-dashed text-muted-foreground transition-colors",
-                      filled
-                        ? "border-primary bg-primary/5 text-foreground"
-                        : "border-white/15 bg-white/5 hover:bg-white/10"
-                    )}
-                  >
-                    {filled ? (
-                      <>
-                        <ImagePlus className="size-6" />
-                        <span className="text-xs">Photo {i + 1}</span>
-                        <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-black/60">
-                          <X className="size-3" />
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <ImagePlus className="size-6" />
-                        <span className="text-xs">Add Photo</span>
-                      </>
-                    )}
-                  </button>
-                );
-              })}
+              {photos.map((photo, index) => (
+                <UploadSlot
+                  key={index}
+                  label={photo.path ? `Photo ${index + 1} uploaded` : `Add Photo ${index + 1}`}
+                  filled={!!photo.path}
+                  pending={photo.pending}
+                  error={photo.error}
+                  previewUrl={photo.url ?? undefined}
+                  onFileSelected={uploadPhoto(index)}
+                  onRemove={() => removePhoto(index)}
+                  className="aspect-square"
+                />
+              ))}
             </div>
             <div className="flex gap-3">
               <Button type="button" variant="secondary" onClick={back} className="h-11 flex-1 rounded-[6px]">
                 Back
               </Button>
-              <Button type="button" onClick={next} className="h-11 flex-1 rounded-[6px]">
+              <Button
+                type="button"
+                onClick={next}
+                disabled={photos.some((photo) => photo.pending)}
+                className="h-11 flex-1 rounded-[6px]"
+              >
                 Next Step
               </Button>
             </div>
@@ -394,7 +424,9 @@ export default function CreateEventPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Photos</span>
-                <span className="font-medium text-foreground">{photos.length} added</span>
+                <span className="font-medium text-foreground">
+                  {photos.filter((photo) => photo.path).length} added
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Talent Slots</span>

@@ -28,6 +28,7 @@ function makeEvent(overrides: Partial<EventWithSlots> = {}): EventWithSlots {
     contact_phone: null,
     expected_guests: null,
     special_requirements: null,
+    photo_urls: [],
     status: "upcoming",
     created_at: new Date().toISOString(),
     slots: [],

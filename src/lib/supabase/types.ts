@@ -57,6 +57,7 @@ export interface EventRow {
   contact_phone: string | null;
   expected_guests: number | null;
   special_requirements: string | null;
+  photo_urls: string[];
   status: EventStatus;
   created_at: string;
 }
@@ -101,6 +102,7 @@ export interface EventListingSummary {
   budget_min_vnd: number | null;
   budget_max_vnd: number | null;
   categories: string[];
+  photo_urls: string[];
 }
 
 /** Full event detail: the event row, its slots, and the organizer's profile. */
