@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const toastCalls: { type: "error" | "success"; message: string }[] = [];
 mock.module("sonner", () => ({
@@ -10,6 +10,15 @@ mock.module("sonner", () => ({
 }));
 mock.module("@/lib/supabase/event-actions", () => ({
   createEvent: async () => ({ success: true as const, slug: "test-event" }),
+}));
+
+mock.module("@/lib/supabase/storage-actions", () => ({
+  uploadEventPhoto: async () => ({
+    success: true,
+    path: "user-1/events/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.png",
+    url: "https://example.com/event-photo.png",
+  }),
+  removeEventPhoto: async () => ({ success: true }),
 }));
 
 import CreateEventPage from "@/app/organizer/create/page";
@@ -48,5 +57,33 @@ describe("CreateEventPage — toasts", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(toastCalls).toContainEqual({ type: "success", message: "Event created." });
+  });
+});
+
+describe("CreateEventPage — event photos", () => {
+  it("uploads a selected file, shows its preview, and removes it through storage", async () => {
+    render(<CreateEventPage />);
+
+    const detailsForm = screen.getByLabelText("Event Name").closest("form");
+    expect(detailsForm).not.toBeNull();
+    fireEvent.submit(detailsForm!);
+
+    expect(screen.getByRole("heading", { name: "Add Photos" })).toBeInTheDocument();
+    const inputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    expect(inputs).toHaveLength(10);
+
+    fireEvent.change(inputs[0], {
+      target: { files: [new File(["photo"], "venue.png", { type: "image/png" })] },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Photo 1 uploaded")).toBeInTheDocument();
+    });
+    expect(document.querySelector('img[src="https://example.com/event-photo.png"]')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Photo 1 uploaded" }));
+    await waitFor(() => {
+      expect(screen.getByText("Add Photo 1")).toBeInTheDocument();
+    });
   });
 });

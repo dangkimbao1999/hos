@@ -15,7 +15,12 @@ export function EventListingCard({ data, href }: { data: EventListingSummary; hr
   const content = (
     <>
       <div className="absolute inset-0 flex items-center justify-center bg-white/10 text-muted-foreground">
-        <ImageIcon className="size-8" />
+        {data.photo_urls[0] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={data.photo_urls[0]} alt="" className="size-full object-cover" />
+        ) : (
+          <ImageIcon className="size-8" />
+        )}
       </div>
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
 
@@ -71,7 +76,12 @@ export function EventListingRow({ data, href }: { data: EventListingSummary; hre
   const content = (
     <>
       <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10 text-muted-foreground">
-        <ImageIcon className="size-5" />
+        {data.photo_urls[0] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={data.photo_urls[0]} alt="" className="size-full object-cover" />
+        ) : (
+          <ImageIcon className="size-5" />
+        )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-medium text-foreground">{data.name}</span>
