@@ -20,7 +20,7 @@ const statusStyles: Record<string, string> = {
   Cancelled: "bg-white/10 text-muted-foreground",
 };
 
-const SUB_FILTERS = ["All", "Upcoming", "Pending", "Pending done", "Wait to confirm", "Done", "Canceled"];
+const SUB_FILTERS = ["All", "Upcoming", "Pending", "Confirmed", "Completed", "Cancelled"];
 
 function formatVnd(n: number) {
   return `${n.toLocaleString("en-US")} VND`;
@@ -53,6 +53,7 @@ export function OrdersContent({
 }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState(SUB_FILTERS[0]);
+  const [search, setSearch] = useState("");
   const [pendingId, setPendingId] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [reviewTarget, setReviewTarget] = useState<{ id: string; talentName: string } | null>(null);
@@ -80,6 +81,21 @@ export function OrdersContent({
         price: o.priceVnd,
         status: o.status,
       }));
+
+  const filteredOrders = orders.filter((order) => {
+    if (activeFilter === "Upcoming") {
+      if (!(order.rawStatus === "confirmed" && order.bookedDate && order.bookedDate >= todayIso())) return false;
+    } else if (activeFilter !== "All" && order.status !== activeFilter) {
+      return false;
+    }
+
+    const query = search.trim().toLowerCase();
+    if (query && !order.counterpartName.toLowerCase().includes(query) && !order.id.toLowerCase().includes(query)) {
+      return false;
+    }
+
+    return true;
+  });
 
   async function handle(action: "accept" | "reject", id: string) {
     setError(undefined);
@@ -119,7 +135,9 @@ export function OrdersContent({
           <Search className="size-4 text-muted-foreground" />
           <input
             type="search"
-            placeholder="Search by events name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or order ID..."
             className="w-56 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
         </div>
@@ -137,8 +155,10 @@ export function OrdersContent({
         </div>
         {orders.length === 0 ? (
           <p className="px-5 py-6 text-sm text-muted-foreground">No orders yet.</p>
+        ) : filteredOrders.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground">No orders match your filters.</p>
         ) : (
-          orders.map((order) => (
+          filteredOrders.map((order) => (
             <div
               key={order.id}
               className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-center gap-4 border-b border-border px-5 py-4 text-sm last:border-b-0"
