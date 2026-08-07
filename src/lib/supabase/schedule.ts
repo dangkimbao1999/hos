@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { mapLookupNames } from "@/lib/supabase/lookups";
 import type { Role } from "@/lib/nav-items";
 
 export interface ScheduleEntry {
@@ -29,7 +30,7 @@ export async function listScheduleEntries(profileId: string, role: Role): Promis
       const eventById = new Map(myEvents.map((e) => [e.id, e]));
       const { data: slots } = await supabase
         .from("event_slots")
-        .select("id, event_id, category")
+        .select("id, event_id, category_id")
         .in("event_id", myEvents.map((e) => e.id));
       const slotById = new Map((slots ?? []).map((s) => [s.id, s]));
 
@@ -47,13 +48,15 @@ export async function listScheduleEntries(profileId: string, role: Role): Promis
             .select("id, full_name")
             .in("id", applicantIds);
           const applicantNameById = new Map((applicants ?? []).map((p) => [p.id, p.full_name]));
+          const categoryNameById = await mapLookupNames(supabase, "categories", slots.map((s) => s.category_id));
 
           for (const app of applications) {
             const slot = slotById.get(app.slot_id);
             const event = slot ? eventById.get(slot.event_id) : undefined;
             if (!slot || !event) continue;
+            const categoryName = categoryNameById.get(slot.category_id) ?? "";
             entries.push({
-              title: `${applicantNameById.get(app.applicant_profile_id) ?? "Talent"} — ${slot.category}`,
+              title: `${applicantNameById.get(app.applicant_profile_id) ?? "Talent"} — ${categoryName}`,
               venue: event.venue,
               date: event.event_date,
               startHour: timeToHour(event.start_time),
@@ -99,7 +102,7 @@ export async function listScheduleEntries(profileId: string, role: Role): Promis
     if (applications && applications.length > 0) {
       const { data: slots } = await supabase
         .from("event_slots")
-        .select("id, event_id, category")
+        .select("id, event_id, category_id")
         .in("id", applications.map((a) => a.slot_id));
 
       if (slots && slots.length > 0) {
@@ -108,12 +111,14 @@ export async function listScheduleEntries(profileId: string, role: Role): Promis
           .select("id, name, venue, event_date, start_time, end_time")
           .in("id", slots.map((s) => s.event_id));
         const eventById = new Map((events ?? []).map((e) => [e.id, e]));
+        const categoryNameById = await mapLookupNames(supabase, "categories", slots.map((s) => s.category_id));
 
         for (const slot of slots) {
           const event = eventById.get(slot.event_id);
           if (!event) continue;
+          const categoryName = categoryNameById.get(slot.category_id) ?? "";
           entries.push({
-            title: `${event.name} — ${slot.category}`,
+            title: `${event.name} — ${categoryName}`,
             venue: event.venue,
             date: event.event_date,
             startHour: timeToHour(event.start_time),
