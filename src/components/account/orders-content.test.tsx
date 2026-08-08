@@ -1,13 +1,21 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-mock.module("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
+let mockSearchParams = new URLSearchParams();
+let replaceCalls: string[] = [];
+mock.module("next/navigation", () => ({
+  useRouter: () => ({ replace: (href: string) => replaceCalls.push(href), refresh: () => {} }),
+  usePathname: () => "/talent/account/orders",
+  useSearchParams: () => mockSearchParams,
+}));
 
 import { OrdersContent } from "@/components/account/orders-content";
 import type { BookingWithNames } from "@/lib/supabase/types";
 
 afterEach(() => {
   cleanup();
+  mockSearchParams = new URLSearchParams();
+  replaceCalls = [];
 });
 
 function makeBooking(overrides: Partial<BookingWithNames> = {}): BookingWithNames {
@@ -47,64 +55,64 @@ describe("OrdersContent — order detail link", () => {
   });
 });
 
-describe("OrdersContent — filter tabs", () => {
-  const bookings = [
-    makeBooking({ id: "pending1-a", status: "pending", organizer_name: "Org Pending" }),
-    makeBooking({ id: "confirm1-a", status: "confirmed", organizer_name: "Org Confirmed" }),
-    makeBooking({ id: "complete1-a", status: "completed", organizer_name: "Org Completed" }),
-    makeBooking({ id: "cancel1-a", status: "cancelled", organizer_name: "Org Cancelled" }),
-  ];
-
-  it("shows every order under the All tab", () => {
-    render(<OrdersContent role="talent" bookings={bookings} />);
-    expect(screen.getByText("Org Pending")).toBeInTheDocument();
-    expect(screen.getByText("Org Confirmed")).toBeInTheDocument();
-    expect(screen.getByText("Org Completed")).toBeInTheDocument();
-    expect(screen.getByText("Org Cancelled")).toBeInTheDocument();
-  });
-
-  it("narrows to only that status when a filter tab is clicked", () => {
-    render(<OrdersContent role="talent" bookings={bookings} />);
+describe("OrdersContent — status tabs navigate via the URL", () => {
+  it("clicking a tab replaces the URL with ?status=, dropping any ?page=", () => {
+    mockSearchParams = new URLSearchParams("page=3");
+    render(<OrdersContent role="talent" bookings={[]} />);
     fireEvent.click(screen.getByRole("button", { name: "Confirmed" }));
-    expect(screen.getByText("Org Confirmed")).toBeInTheDocument();
-    expect(screen.queryByText("Org Pending")).not.toBeInTheDocument();
-    expect(screen.queryByText("Org Completed")).not.toBeInTheDocument();
-    expect(screen.queryByText("Org Cancelled")).not.toBeInTheDocument();
+    expect(replaceCalls).toEqual(["/talent/account/orders?status=Confirmed"]);
   });
 
-  it("Upcoming shows only confirmed bookings with a future booked date", () => {
-    render(
-      <OrdersContent
-        role="talent"
-        bookings={[
-          makeBooking({ id: "future1-a", status: "confirmed", booked_date: "2099-01-01", organizer_name: "Future Org" }),
-          makeBooking({ id: "past1-a", status: "confirmed", booked_date: "2020-01-01", organizer_name: "Past Org" }),
-        ]}
-      />
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Upcoming" }));
-    expect(screen.getByText("Future Org")).toBeInTheDocument();
-    expect(screen.queryByText("Past Org")).not.toBeInTheDocument();
+  it("clicking All clears the status param entirely", () => {
+    mockSearchParams = new URLSearchParams("status=Confirmed");
+    render(<OrdersContent role="talent" bookings={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(replaceCalls).toEqual(["/talent/account/orders"]);
+  });
+
+  it("reflects the ?status= URL param as the active tab", () => {
+    mockSearchParams = new URLSearchParams("status=Confirmed");
+    render(<OrdersContent role="talent" bookings={[]} />);
+    expect(screen.getByRole("button", { name: "Confirmed" })).toHaveClass("bg-foreground");
+    expect(screen.getByRole("button", { name: "All" })).not.toHaveClass("bg-foreground");
   });
 });
 
-describe("OrdersContent — search", () => {
-  const bookings = [
-    makeBooking({ id: "alpha001-x", organizer_name: "Alpha Events" }),
-    makeBooking({ id: "beta002-x", organizer_name: "Beta Events" }),
-  ];
-
-  it("filters by counterpart name", () => {
-    render(<OrdersContent role="talent" bookings={bookings} />);
+describe("OrdersContent — search debounces into the URL", () => {
+  it("navigates to ?q=<value> only after the debounce, not on every keystroke", async () => {
+    render(<OrdersContent role="talent" bookings={[]} />);
     fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "alpha" } });
-    expect(screen.getByText("Alpha Events")).toBeInTheDocument();
-    expect(screen.queryByText("Beta Events")).not.toBeInTheDocument();
+    expect(replaceCalls).toEqual([]);
+    await waitFor(
+      () => {
+        expect(replaceCalls).toEqual(["/talent/account/orders?q=alpha"]);
+      },
+      { timeout: 1500 }
+    );
+  });
+});
+
+describe("OrdersContent — empty states", () => {
+  it('shows "No orders yet." when there are no orders and no filters are active', () => {
+    render(<OrdersContent role="talent" bookings={[]} />);
+    expect(screen.getByText("No orders yet.")).toBeInTheDocument();
   });
 
-  it("filters by order id", () => {
-    render(<OrdersContent role="talent" bookings={bookings} />);
-    fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "beta002" } });
-    expect(screen.getByText("Beta Events")).toBeInTheDocument();
-    expect(screen.queryByText("Alpha Events")).not.toBeInTheDocument();
+  it('shows "No orders match your filters." when a filter is active', () => {
+    mockSearchParams = new URLSearchParams("status=Confirmed");
+    render(<OrdersContent role="talent" bookings={[]} />);
+    expect(screen.getByText("No orders match your filters.")).toBeInTheDocument();
+  });
+});
+
+describe("OrdersContent — pagination", () => {
+  it("renders a pagination control when currentPage/totalPages are given", () => {
+    render(<OrdersContent role="talent" bookings={[makeBooking()]} currentPage={1} totalPages={3} />);
+    expect(screen.getByRole("navigation", { name: /pagination/i })).toBeInTheDocument();
+  });
+
+  it("renders no pagination control in mock mode (currentPage/totalPages omitted)", () => {
+    render(<OrdersContent role="agency" />);
+    expect(screen.queryByRole("navigation", { name: /pagination/i })).not.toBeInTheDocument();
   });
 });

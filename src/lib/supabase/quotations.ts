@@ -1,4 +1,5 @@
 import { mapLookupNames } from "@/lib/supabase/lookups";
+import { ACCOUNT_LIST_PAGE_SIZE } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import type { QuotationWithNames } from "@/lib/supabase/types";
 
@@ -40,4 +41,36 @@ export async function listQuotationsForTalent(talentId: string): Promise<Quotati
     .eq("talent_id", talentId)
     .order("created_at", { ascending: false });
   return withNames(supabase, data ?? []);
+}
+
+/** Offset-paginated variant of listQuotationsForOrganizer() — for Account > My Quotations. */
+export async function listQuotationsForOrganizerPage(
+  organizerId: string,
+  page: number
+): Promise<{ quotations: QuotationWithNames[]; totalCount: number }> {
+  const supabase = await createClient();
+  const offset = (page - 1) * ACCOUNT_LIST_PAGE_SIZE;
+  const { data, count } = await supabase
+    .from("quotations")
+    .select("*", { count: "exact" })
+    .eq("organizer_id", organizerId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + ACCOUNT_LIST_PAGE_SIZE - 1);
+  return { quotations: await withNames(supabase, data ?? []), totalCount: count ?? 0 };
+}
+
+/** Offset-paginated variant of listQuotationsForTalent() — for Account > My Quotations. */
+export async function listQuotationsForTalentPage(
+  talentId: string,
+  page: number
+): Promise<{ quotations: QuotationWithNames[]; totalCount: number }> {
+  const supabase = await createClient();
+  const offset = (page - 1) * ACCOUNT_LIST_PAGE_SIZE;
+  const { data, count } = await supabase
+    .from("quotations")
+    .select("*", { count: "exact" })
+    .eq("talent_id", talentId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + ACCOUNT_LIST_PAGE_SIZE - 1);
+  return { quotations: await withNames(supabase, data ?? []), totalCount: count ?? 0 };
 }

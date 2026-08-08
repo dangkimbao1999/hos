@@ -63,3 +63,24 @@ describe("PackagesContent — toasts", () => {
     expect(toastCalls).toContainEqual({ type: "success", message: "Package deleted." });
   });
 });
+
+describe("PackagesContent — pagination", () => {
+  it("renders a pagination control linking to /<role>/account/packages?page=N when given", () => {
+    render(
+      <PackagesContent
+        role="talent"
+        packages={[makePackage()]}
+        categories={[]}
+        cities={[]}
+        currentPage={1}
+        totalPages={3}
+      />
+    );
+    expect(screen.getByRole("link", { name: "2" })).toHaveAttribute("href", "/talent/account/packages?page=2");
+  });
+
+  it("renders no pagination control when currentPage/totalPages are omitted (agency mock mode)", () => {
+    render(<PackagesContent role="agency" categories={[]} cities={[]} />);
+    expect(screen.queryByRole("navigation", { name: /pagination/i })).not.toBeInTheDocument();
+  });
+});

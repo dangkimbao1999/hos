@@ -1,4 +1,5 @@
 import { mapLookupNames } from "@/lib/supabase/lookups";
+import { ACCOUNT_LIST_PAGE_SIZE, parsePageParam } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import type {
   BookingDetail,
@@ -260,6 +261,39 @@ export async function listPackagesWithBookingCounts(
   return packages.map((pkg) => ({ ...pkg, bookingCount: countByPackageId.get(pkg.id) ?? 0 }));
 }
 
+/** Offset-paginated variant of listPackagesWithBookingCounts() — for Account > My Packages. */
+export async function listPackagesWithBookingCountsPage(
+  talentId: string,
+  page: number
+): Promise<{ packages: (PackageRow & { bookingCount: number })[]; totalCount: number }> {
+  const supabase = await createClient();
+  const offset = (page - 1) * ACCOUNT_LIST_PAGE_SIZE;
+  const { data: packages, count } = await supabase
+    .from("packages")
+    .select("*", { count: "exact" })
+    .eq("talent_id", talentId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + ACCOUNT_LIST_PAGE_SIZE - 1);
+
+  const totalCount = count ?? 0;
+  if (!packages || packages.length === 0) return { packages: [], totalCount };
+
+  const { data: bookings } = await supabase
+    .from("package_bookings")
+    .select("package_id")
+    .in("package_id", packages.map((p) => p.id));
+
+  const countByPackageId = new Map<string, number>();
+  for (const booking of bookings ?? []) {
+    countByPackageId.set(booking.package_id, (countByPackageId.get(booking.package_id) ?? 0) + 1);
+  }
+
+  return {
+    packages: packages.map((pkg) => ({ ...pkg, bookingCount: countByPackageId.get(pkg.id) ?? 0 })),
+    totalCount,
+  };
+}
+
 export async function listCartItems(organizerId: string): Promise<CartItemWithPackage[]> {
   const supabase = await createClient();
   const { data: items } = await supabase
@@ -306,6 +340,50 @@ async function attachNames(
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
   return { packageById, profileById };
+}
+
+/**
+ * A page of a role's own bookings matching the given status/search filters —
+ * for each role's My Orders page. Offset-paginated (unlike the Discover
+ * grids' keyset pagination) since a numbered-page control needs a real
+ * total count, which search_bookings_for_role() provides via count(*) over().
+ */
+export async function searchBookingsForRole(
+  role: "organizer" | "talent",
+  profileId: string,
+  filters: { status: string | null; search: string | null },
+  page: number
+): Promise<{ bookings: BookingWithNames[]; totalCount: number }> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("search_bookings_for_role", {
+    p_role: role,
+    p_profile_id: profileId,
+    p_status: filters.status,
+    p_search: filters.search,
+    p_limit: ACCOUNT_LIST_PAGE_SIZE,
+    p_offset: (page - 1) * ACCOUNT_LIST_PAGE_SIZE,
+  });
+  const rows = (data ?? []) as (BookingWithNames & { total_count: number })[];
+  const totalCount = rows[0]?.total_count ?? 0;
+  return {
+    bookings: rows.map(({ total_count: _total_count, ...row }) => row),
+    totalCount,
+  };
+}
+
+/** Resolves ?status=/?q=/?page= into searchBookingsForRole()'s params — shared by the organizer and talent Orders pages, which are otherwise identical. */
+export function resolveOrdersPageParams(params: {
+  status?: string | string[];
+  q?: string | string[];
+  page?: string | string[];
+}): { status: string | null; search: string | null; page: number } {
+  const firstParam = (value: string | string[] | undefined): string | null =>
+    (Array.isArray(value) ? value[0] : value) ?? null;
+  return {
+    status: firstParam(params.status),
+    search: firstParam(params.q),
+    page: parsePageParam(params.page),
+  };
 }
 
 export async function listBookingsForOrganizer(organizerId: string): Promise<BookingWithNames[]> {

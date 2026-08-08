@@ -1,4 +1,5 @@
 import { mapLookupNames } from "@/lib/supabase/lookups";
+import { ACCOUNT_LIST_PAGE_SIZE } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import type {
   CategoryOption,
@@ -110,17 +111,22 @@ export function resolveInitialEventFilters(
   };
 }
 
-/** An organizer's own created events, with booked-talent counts — for Account > My Events. */
-export async function listOrganizerEvents(organizerId: string): Promise<EventListingSummary[]> {
+/** Offset-paginated list of an organizer's own created events, with booked-talent counts — for Account > My Events. */
+export async function listOrganizerEventsPage(
+  organizerId: string,
+  page: number
+): Promise<{ events: EventListingSummary[]; totalCount: number }> {
   const supabase = await createClient();
+  const offset = (page - 1) * ACCOUNT_LIST_PAGE_SIZE;
 
-  const { data } = await supabase
+  const { data, count } = await supabase
     .from("event_listing_summary")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("organizer_id", organizerId)
-    .order("event_date", { ascending: false });
+    .order("event_date", { ascending: false })
+    .range(offset, offset + ACCOUNT_LIST_PAGE_SIZE - 1);
 
-  return data ?? [];
+  return { events: data ?? [], totalCount: count ?? 0 };
 }
 
 /** Every application to any of an organizer's events — for reviewing/accepting on Account > My Events. */
