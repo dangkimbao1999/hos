@@ -71,6 +71,9 @@ export function QuotationsContent({ role, quotations }: { role: Role; quotations
                   <span className="text-xs text-muted-foreground">
                     {isTalent ? `From ${q.organizer_name}` : `To ${q.talent_name}`}
                     {q.event_date ? ` · ${q.event_date}` : ""}
+                    {q.event_start_time && q.event_end_time
+                      ? ` · ${q.event_start_time}-${q.event_end_time}`
+                      : ""}
                     {q.venue ? ` · ${q.venue}` : ""}
                   </span>
                   {(q.city_name || q.address) && (

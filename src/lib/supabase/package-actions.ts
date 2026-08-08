@@ -166,10 +166,16 @@ export async function addToCart(
   const priceVnd = Number(formData.get("priceVnd") ?? 0);
   const bookedDate = String(formData.get("bookedDate") ?? "") || null;
   const bookedTime = String(formData.get("bookedTime") ?? "") || null;
+  const bookedEndTime = String(formData.get("bookedEndTime") ?? "") || null;
   const cityId = String(formData.get("cityId") ?? "") || null;
   const address = String(formData.get("address") ?? "").trim() || null;
   if (!cityId) return { error: "Select the perform city." };
   if (!address) return { error: "Enter the perform address." };
+  // The package's own start_time/end_time is the talent's availability
+  // window (e.g. 9AM-6PM) -- the organizer picks a start inside it but must
+  // say how long they actually need the talent for.
+  if (!bookedEndTime) return { error: "Enter an end time for this booking." };
+  if (bookedTime && bookedEndTime <= bookedTime) return { error: "End time must be after start time." };
 
   const { error } = await supabase.from("cart_items").insert({
     organizer_id: user.id,
@@ -177,6 +183,7 @@ export async function addToCart(
     price_vnd: priceVnd,
     booked_date: bookedDate,
     booked_time: bookedTime,
+    booked_end_time: bookedEndTime,
     city_id: cityId,
     address,
   });
@@ -240,6 +247,7 @@ export async function checkoutCart(
       awaiting_response_from: "talent",
       booked_date: item.booked_date,
       booked_time: item.booked_time,
+      booked_end_time: item.booked_end_time,
       city_id: item.city_id,
       address: item.address,
       payment_method: paymentMethod,

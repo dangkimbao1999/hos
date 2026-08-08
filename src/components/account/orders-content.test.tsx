@@ -23,6 +23,7 @@ function makeBooking(overrides: Partial<BookingWithNames> = {}): BookingWithName
     awaiting_response_from: "talent",
     booked_date: "2026-12-01",
     booked_time: "20:00",
+    booked_end_time: "21:00",
     payment_method: "Prepaid",
     status: "pending",
     created_at: new Date().toISOString(),

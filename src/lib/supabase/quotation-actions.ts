@@ -18,6 +18,8 @@ export async function requestQuotation(
   const talentId = String(formData.get("talentId") ?? "");
   const eventName = String(formData.get("eventName") ?? "").trim();
   const eventDate = String(formData.get("eventDate") ?? "") || null;
+  const eventStartTime = String(formData.get("eventStartTime") ?? "") || null;
+  const eventEndTime = String(formData.get("eventEndTime") ?? "") || null;
   const venue = String(formData.get("venue") ?? "").trim() || null;
   const cityId = String(formData.get("cityId") ?? "") || null;
   const address = String(formData.get("address") ?? "").trim() || null;
@@ -27,14 +29,22 @@ export async function requestQuotation(
 
   if (!talentId) return { error: "Missing talent." };
   if (!eventName) return { error: "Event name is required." };
+  if (!eventDate) return { error: "Event date is required." };
   if (!cityId) return { error: "Select the perform city." };
   if (!address) return { error: "Enter the perform address." };
+  // A quotation isn't tied to any package, so there's no availability
+  // window to pick a start time from -- just a specific requested slot.
+  if (!eventStartTime) return { error: "Enter a start time." };
+  if (!eventEndTime) return { error: "Enter an end time." };
+  if (eventEndTime <= eventStartTime) return { error: "End time must be after start time." };
 
   const { error } = await supabase.from("quotations").insert({
     organizer_id: user.id,
     talent_id: talentId,
     event_name: eventName,
     event_date: eventDate,
+    event_start_time: eventStartTime,
+    event_end_time: eventEndTime,
     venue,
     city_id: cityId,
     address,

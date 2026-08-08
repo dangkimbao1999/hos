@@ -153,7 +153,9 @@ export function OrderDetailContent({ role, booking }: { role: Role; booking: Boo
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Time</span>
             <span className="text-sm text-foreground">
-              {booking.package_start_time} - {booking.package_end_time}
+              {booking.booked_time && booking.booked_end_time
+                ? `${booking.booked_time} - ${booking.booked_end_time}`
+                : "Flexible"}
             </span>
           </div>
         </div>

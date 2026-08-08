@@ -28,6 +28,9 @@ describe("RequestQuoteDialog — toasts", () => {
     fireEvent.change(screen.getByPlaceholderText("Private Wedding Reception"), {
       target: { value: "My Event" },
     });
+    fireEvent.change(screen.getByLabelText("Event Date"), { target: { value: "2026-12-01" } });
+    fireEvent.change(screen.getByLabelText("Start Time"), { target: { value: "20:00" } });
+    fireEvent.change(screen.getByLabelText("End Time"), { target: { value: "21:00" } });
     fireEvent.change(screen.getByLabelText(/perform city/i), { target: { value: "city-hcm" } });
     fireEvent.change(screen.getByLabelText(/perform address/i), { target: { value: "123 Main St" } });
     fireEvent.click(screen.getByRole("button", { name: /send request/i }));

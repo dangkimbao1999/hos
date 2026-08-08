@@ -287,7 +287,7 @@ export async function getBookingDetail(bookingId: string): Promise<BookingDetail
 
   const { data: pkg } = await supabase
     .from("packages")
-    .select("title, description, working_method, skill_tags, talent_id, start_time, end_time")
+    .select("title, description, working_method, skill_tags, talent_id")
     .eq("id", booking.package_id)
     .single();
   if (!pkg) return null;
@@ -308,8 +308,6 @@ export async function getBookingDetail(bookingId: string): Promise<BookingDetail
     package_description: pkg.description,
     package_working_method: pkg.working_method,
     package_skill_tags: pkg.skill_tags,
-    package_start_time: pkg.start_time,
-    package_end_time: pkg.end_time,
     venue_city_name: booking.city_id ? (cityNames.get(booking.city_id) ?? null) : null,
     venue_address: booking.address,
   };

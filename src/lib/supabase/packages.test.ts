@@ -30,6 +30,7 @@ mock.module("@/lib/supabase/server", () => ({
           awaiting_response_from: "talent",
           booked_date: "2026-12-01",
           booked_time: "20:00",
+          booked_end_time: "21:00",
           city_id: "city-hcm",
           address: "123 Main St",
           payment_method: "Prepaid",
@@ -45,8 +46,6 @@ mock.module("@/lib/supabase/server", () => ({
           working_method: "Freelance",
           skill_tags: ["Guitar", "Vocals"],
           talent_id: "talent-1",
-          start_time: "20:00:00",
-          end_time: "22:00:00",
         });
       }
       if (table === "profiles") {
@@ -248,8 +247,6 @@ describe("getBookingDetail", () => {
       package_description: "A chill set.",
       package_working_method: "Freelance",
       package_skill_tags: ["Guitar", "Vocals"],
-      package_start_time: "20:00:00",
-      package_end_time: "22:00:00",
       venue_city_name: "HCM City",
       venue_address: "123 Main St",
     });

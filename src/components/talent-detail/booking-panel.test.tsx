@@ -59,6 +59,7 @@ describe("BookingPanel — toasts", () => {
   it("shows a success toast when added to cart", async () => {
     render(<BookingPanel talentName="Test Talent" packages={[makePackage()]} cities={CITIES} />);
     fireEvent.change(screen.getByLabelText("Booking date"), { target: { value: "2026-12-01" } });
+    fireEvent.change(screen.getByLabelText("Booking end time"), { target: { value: "21:00" } });
     fireEvent.change(screen.getByLabelText(/perform city/i), { target: { value: "city-hcm" } });
     fireEvent.change(screen.getByLabelText(/perform address/i), { target: { value: "123 Main St" } });
     fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
@@ -66,9 +67,28 @@ describe("BookingPanel — toasts", () => {
     expect(toastCalls).toContainEqual({ type: "success", message: "Added to cart." });
   });
 
+  it("blocks adding to cart without an end time", async () => {
+    render(<BookingPanel talentName="Test Talent" packages={[makePackage()]} cities={CITIES} />);
+    fireEvent.change(screen.getByLabelText("Booking date"), { target: { value: "2026-12-01" } });
+    fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
+    expect(screen.getByText("Enter an end time for this booking.")).toBeInTheDocument();
+    expect(toastCalls).toEqual([]);
+  });
+
+  it("blocks adding to cart when the end time isn't after the start time", async () => {
+    render(<BookingPanel talentName="Test Talent" packages={[makePackage()]} cities={CITIES} />);
+    fireEvent.change(screen.getByLabelText("Booking date"), { target: { value: "2026-12-01" } });
+    fireEvent.change(screen.getByLabelText("Booking start time"), { target: { value: "20:00" } });
+    fireEvent.change(screen.getByLabelText("Booking end time"), { target: { value: "20:00" } });
+    fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
+    expect(screen.getByText("End time must be after start time.")).toBeInTheDocument();
+    expect(toastCalls).toEqual([]);
+  });
+
   it("blocks adding to cart without a perform city", async () => {
     render(<BookingPanel talentName="Test Talent" packages={[makePackage()]} cities={CITIES} />);
     fireEvent.change(screen.getByLabelText("Booking date"), { target: { value: "2026-12-01" } });
+    fireEvent.change(screen.getByLabelText("Booking end time"), { target: { value: "21:00" } });
     fireEvent.change(screen.getByLabelText(/perform address/i), { target: { value: "123 Main St" } });
     fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
     expect(screen.getByText("Select the perform city.")).toBeInTheDocument();
@@ -78,6 +98,7 @@ describe("BookingPanel — toasts", () => {
   it("blocks adding to cart without a perform address", async () => {
     render(<BookingPanel talentName="Test Talent" packages={[makePackage()]} cities={CITIES} />);
     fireEvent.change(screen.getByLabelText("Booking date"), { target: { value: "2026-12-01" } });
+    fireEvent.change(screen.getByLabelText("Booking end time"), { target: { value: "21:00" } });
     fireEvent.change(screen.getByLabelText(/perform city/i), { target: { value: "city-hcm" } });
     fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
     expect(screen.getByText("Enter the perform address.")).toBeInTheDocument();

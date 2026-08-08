@@ -383,6 +383,8 @@ describe("addToCart", () => {
     formData.set("priceVnd", "1000000");
     formData.set("cityId", "city-hcm");
     formData.set("address", "123 Main St");
+    formData.set("bookedTime", "10:00");
+    formData.set("bookedEndTime", "11:00");
     for (const [key, value] of Object.entries(overrides)) formData.set(key, value);
     return formData;
   }
@@ -403,5 +405,28 @@ describe("addToCart", () => {
   it("requires a perform address", async () => {
     supabaseMock = makeSupabase({ user: { id: USER_ID } });
     expect(await addToCart(cartFormData({ address: "" }))).toEqual({ error: "Enter the perform address." });
+  });
+
+  it("requires an end time", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    expect(await addToCart(cartFormData({ bookedEndTime: "" }))).toEqual({
+      error: "Enter an end time for this booking.",
+    });
+  });
+
+  it("rejects an end time at or before the start time", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    expect(await addToCart(cartFormData({ bookedTime: "10:00", bookedEndTime: "10:00" }))).toEqual({
+      error: "End time must be after start time.",
+    });
+  });
+
+  it("persists the booked start and end time", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    await addToCart(cartFormData({ bookedTime: "14:00", bookedEndTime: "15:30" }));
+    expect(supabaseMock.__inserted.cart_items).toMatchObject({
+      booked_time: "14:00",
+      booked_end_time: "15:30",
+    });
   });
 });
