@@ -139,6 +139,24 @@ export interface EventListingSummary {
   photo_urls: string[];
 }
 
+export type EventDiscoverSort = "newest" | "price_asc" | "price_desc";
+
+/** The agency/talent Events Discover grid's current filter/sort/search selection — mirrors search_event_listings()'s params. */
+export interface EventDiscoverFilters {
+  category: string | null;
+  dateStart: string | null;
+  dateEnd: string | null;
+  search: string | null;
+  sort: EventDiscoverSort;
+}
+
+/** Keyset pagination cursor for search_event_listings() — the last-loaded row's sort key + id. */
+export interface EventDiscoverCursor {
+  createdAt: string;
+  budgetMin: number;
+  id: string;
+}
+
 /** Full event detail: the event row, its slots (with resolved category name), and the organizer's profile. */
 export interface EventWithSlots extends EventRow {
   slots: (EventSlotRow & { category_name: string })[];

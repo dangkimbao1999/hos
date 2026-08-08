@@ -1,7 +1,10 @@
 import { mapLookupNames } from "@/lib/supabase/lookups";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  CategoryOption,
   EventApplicationWithDetails,
+  EventDiscoverCursor,
+  EventDiscoverFilters,
   EventListingSummary,
   EventWithSlots,
 } from "@/lib/supabase/types";
@@ -58,6 +61,53 @@ export async function listEventListings(limit?: number): Promise<EventListingSum
 
   const { data } = await query;
   return data ?? [];
+}
+
+export const EVENT_DISCOVER_PAGE_SIZE = 15;
+
+/**
+ * A page of upcoming events matching the given filters, sorted, and
+ * keyset-paginated via `cursor` (the previous page's last row) instead of
+ * OFFSET — see search_event_listings()'s migration for why.
+ */
+export async function searchEventListings(
+  filters: EventDiscoverFilters,
+  cursor: EventDiscoverCursor | null,
+  limit: number
+): Promise<EventListingSummary[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("search_event_listings", {
+    p_category: filters.category,
+    p_date_start: filters.dateStart,
+    p_date_end: filters.dateEnd,
+    p_search: filters.search,
+    p_sort: filters.sort,
+    p_cursor_created_at: cursor?.createdAt ?? null,
+    p_cursor_budget_min: cursor?.budgetMin ?? null,
+    p_cursor_id: cursor?.id ?? null,
+    p_limit: limit,
+  });
+  return data ?? [];
+}
+
+function firstParam(value: string | string[] | undefined): string | null {
+  return (Array.isArray(value) ? value[0] : value) ?? null;
+}
+
+/** Resolves the sidebar/search URL params (?category=, ?q=) into the RPC's filter shape — shared by the agency and talent Discover pages, which are otherwise identical. */
+export function resolveInitialEventFilters(
+  categories: CategoryOption[],
+  params: { category?: string | string[]; q?: string | string[] }
+): EventDiscoverFilters {
+  const categoryNames = categories.map((c) => c.name);
+  const categoryParam = firstParam(params.category);
+  return {
+    category: categoryParam && categoryNames.includes(categoryParam) ? categoryParam : null,
+    dateStart: null,
+    dateEnd: null,
+    search: firstParam(params.q),
+    sort: "newest",
+  };
 }
 
 /** An organizer's own created events, with booked-talent counts — for Account > My Events. */
