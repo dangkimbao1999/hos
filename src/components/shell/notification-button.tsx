@@ -13,6 +13,7 @@ const PERSON_KINDS = new Set([
   "application_received",
   "application_status",
   "booking_received",
+  "counter_offer_received",
   "quotation_received",
   "quotation_responded",
 ]);
@@ -28,6 +29,8 @@ function hrefForNotification(kind: NotificationKind, role: Role): string {
     case "booking_received":
       return `${base}/orders`;
     case "booking_status":
+      return `${base}/orders`;
+    case "counter_offer_received":
       return `${base}/orders`;
     case "quotation_received":
       return `${base}/quotations`;
