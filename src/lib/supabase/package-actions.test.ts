@@ -14,6 +14,9 @@ interface FakeBooking {
   talent_offer_vnd: number;
   organizer_offer_vnd: number;
   talent_id: string;
+  payment_method?: "Prepaid" | "Postpaid";
+  status?: string;
+  payment_status?: "pending" | "complete";
 }
 
 function makeSupabase(options: {
@@ -78,6 +81,9 @@ function makeSupabase(options: {
                       awaiting_response_from: options.booking.awaiting_response_from,
                       talent_offer_vnd: options.booking.talent_offer_vnd,
                       organizer_offer_vnd: options.booking.organizer_offer_vnd,
+                      payment_method: options.booking.payment_method ?? "Prepaid",
+                      status: options.booking.status ?? "confirmed",
+                      payment_status: options.booking.payment_status ?? "pending",
                       package: { talent_id: options.booking.talent_id },
                     }
                   : null,
@@ -109,6 +115,7 @@ import {
   confirmBookingOffer,
   createPackage,
   deletePackage,
+  markBookingPaid,
   rejectBooking,
   removeFromCart,
   submitCounterOffer,
@@ -247,7 +254,24 @@ describe("confirmBookingOffer", () => {
       status: "confirmed",
       price_vnd: 4_500_000,
       awaiting_response_from: null,
+      payment_status: "pending",
     });
+  });
+
+  it("marks Postpaid bookings as already paid on confirm, since payment happens after the event", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "talent",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 4_500_000,
+        payment_method: "Postpaid",
+      },
+    });
+    await confirmBookingOffer("booking-1");
+    expect(supabaseMock.__updated.package_bookings).toMatchObject({ payment_status: "complete" });
   });
 
   it("accepts the talent's offer when it's the organizer's turn", async () => {
@@ -292,6 +316,80 @@ describe("confirmBookingOffer", () => {
       },
     });
     expect(await confirmBookingOffer("booking-1")).toEqual({ error: "You are not part of this booking." });
+  });
+});
+
+describe("markBookingPaid", () => {
+  it("marks a Prepaid confirmed booking as paid when the organizer confirms", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        payment_method: "Prepaid",
+        status: "confirmed",
+        payment_status: "pending",
+      },
+    });
+    const result = await markBookingPaid("booking-1");
+    expect(result).toEqual({ success: true });
+    expect(supabaseMock.__updated.package_bookings).toEqual({ payment_status: "complete" });
+  });
+
+  it("rejects when the caller isn't the organizer", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        payment_method: "Prepaid",
+        status: "confirmed",
+        payment_status: "pending",
+      },
+    });
+    expect(await markBookingPaid("booking-1")).toEqual({
+      error: "Only the organizer can confirm payment for this booking.",
+    });
+  });
+
+  it("rejects when the booking isn't confirmed yet", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "talent",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        payment_method: "Prepaid",
+        status: "pending",
+        payment_status: "pending",
+      },
+    });
+    expect(await markBookingPaid("booking-1")).toEqual({ error: "This booking isn't confirmed yet." });
+  });
+
+  it("rejects Postpaid bookings, which don't need prepayment", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        payment_method: "Postpaid",
+        status: "confirmed",
+        payment_status: "complete",
+      },
+    });
+    expect(await markBookingPaid("booking-1")).toEqual({ error: "This booking doesn't require prepayment." });
   });
 });
 

@@ -14,9 +14,11 @@ mock.module("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 let confirmResult: { error: string } | { success: true } = { success: true as const };
 let counterResult: { error: string } | { success: true } = { success: true as const };
 let cancelResult: { error: string } | { success: true } = { success: true as const };
+let markPaidResult: { error: string } | { success: true } = { success: true as const };
 const confirmCalls: string[] = [];
 const counterCalls: { bookingId: string; offerVnd: string | null }[] = [];
 const cancelCalls: string[] = [];
+const markPaidCalls: string[] = [];
 mock.module("@/lib/supabase/package-actions", () => ({
   confirmBookingOffer: async (bookingId: string) => {
     confirmCalls.push(bookingId);
@@ -30,6 +32,10 @@ mock.module("@/lib/supabase/package-actions", () => ({
     cancelCalls.push(bookingId);
     return cancelResult;
   },
+  markBookingPaid: async (bookingId: string) => {
+    markPaidCalls.push(bookingId);
+    return markPaidResult;
+  },
 }));
 
 import { OrderDetailContent } from "@/components/account/order-detail-content";
@@ -41,9 +47,11 @@ afterEach(() => {
   confirmCalls.length = 0;
   counterCalls.length = 0;
   cancelCalls.length = 0;
+  markPaidCalls.length = 0;
   confirmResult = { success: true as const };
   counterResult = { success: true as const };
   cancelResult = { success: true as const };
+  markPaidResult = { success: true as const };
   refresh.mockClear();
 });
 
@@ -63,6 +71,7 @@ function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDetail {
     address: "123 Main St",
     payment_method: "Prepaid",
     status: "pending",
+    payment_status: "pending",
     created_at: "2026-08-01T00:00:00Z",
     updated_at: "2026-08-01T00:00:00Z",
     organizer_name: "Test Organizer",
@@ -128,7 +137,88 @@ describe("OrderDetailContent — whose turn it is", () => {
     );
     expect(screen.queryByRole("button", { name: /order confirm/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /add new offer/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^cancel$/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("OrderDetailContent — payment step (confirmed, Prepaid, unpaid)", () => {
+  function confirmedUnpaidBooking(overrides: Partial<BookingDetail> = {}) {
+    return makeBooking({
+      status: "confirmed",
+      awaiting_response_from: null,
+      payment_method: "Prepaid",
+      payment_status: "pending",
+      ...overrides,
+    });
+  }
+
+  it("shows Proceed to Payment and Cancel for the organizer", () => {
+    render(<OrderDetailContent role="organizer" booking={confirmedUnpaidBooking()} />);
+    expect(screen.getByRole("button", { name: /proceed to payment/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^cancel$/i })).toBeInTheDocument();
+  });
+
+  it("shows a waiting message instead of a payment button for the talent", () => {
+    render(<OrderDetailContent role="talent" booking={confirmedUnpaidBooking()} />);
+    expect(screen.queryByRole("button", { name: /proceed to payment/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/waiting for the organizer to complete payment/i)).toBeInTheDocument();
+  });
+
+  it("opens the payment dialog with bank transfer details and a QR code", () => {
+    render(<OrderDetailContent role="organizer" booking={confirmedUnpaidBooking()} />);
+    fireEvent.click(screen.getByRole("button", { name: /proceed to payment/i }));
+    expect(screen.getByText("Payment - Final step")).toBeInTheDocument();
+    expect(screen.getByText(/scan this qr/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /i already did that/i })).toBeInTheDocument();
+  });
+
+  it("confirms payment and refreshes on success", async () => {
+    render(<OrderDetailContent role="organizer" booking={confirmedUnpaidBooking()} />);
+    fireEvent.click(screen.getByRole("button", { name: /proceed to payment/i }));
+    fireEvent.click(screen.getByRole("button", { name: /i already did that/i }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(markPaidCalls).toEqual(["booking-1"]);
+    expect(toastCalls).toContainEqual({ type: "success", message: "Payment confirmed." });
+    expect(refresh).toHaveBeenCalled();
+  });
+});
+
+describe("OrderDetailContent — paid/complete state", () => {
+  function paidBooking(overrides: Partial<BookingDetail> = {}) {
+    return makeBooking({
+      status: "confirmed",
+      awaiting_response_from: null,
+      payment_method: "Prepaid",
+      payment_status: "complete",
+      ...overrides,
+    });
+  }
+
+  it("shows Generate check-in QR and Add to Calendar for the organizer", () => {
+    render(<OrderDetailContent role="organizer" booking={paidBooking()} />);
+    expect(screen.getByRole("button", { name: /generate check-in qr code for talent/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add to calendar/i })).toBeInTheDocument();
+  });
+
+  it("treats Postpaid bookings as already paid once confirmed", () => {
+    render(
+      <OrderDetailContent
+        role="organizer"
+        booking={paidBooking({ payment_method: "Postpaid", payment_status: "pending" })}
+      />
+    );
+    expect(screen.getByRole("button", { name: /generate check-in qr code for talent/i })).toBeInTheDocument();
+  });
+
+  it("hides Generate check-in QR from the talent but still shows Add to Calendar", () => {
+    render(<OrderDetailContent role="talent" booking={paidBooking()} />);
+    expect(screen.queryByRole("button", { name: /generate check-in qr code for talent/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add to calendar/i })).toBeInTheDocument();
+  });
+
+  it("opens the check-in QR dialog", () => {
+    render(<OrderDetailContent role="organizer" booking={paidBooking()} />);
+    fireEvent.click(screen.getByRole("button", { name: /generate check-in qr code for talent/i }));
+    expect(screen.getByText("Check-in QR Code")).toBeInTheDocument();
   });
 });
 

@@ -2,12 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { confirmBookingOffer, rejectBooking, submitCounterOffer } from "@/lib/supabase/package-actions";
+import { QRCodeSVG } from "qrcode.react";
+import {
+  confirmBookingOffer,
+  markBookingPaid,
+  rejectBooking,
+  submitCounterOffer,
+} from "@/lib/supabase/package-actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { buildIcsContent } from "@/lib/ics";
 import { runAction } from "@/lib/toast-action";
 import type { BookingDetail, BookingParty } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
@@ -28,9 +35,14 @@ export function OrderDetailContent({ role, booking }: { role: Role; booking: Boo
   const otherRole: BookingParty = myRole === "organizer" ? "talent" : "organizer";
   const [pending, setPending] = useState(false);
   const [counterOpen, setCounterOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [checkInOpen, setCheckInOpen] = useState(false);
 
   const isMyTurn = booking.awaiting_response_from === myRole;
   const isNegotiating = NEGOTIATION_STATUSES.has(booking.status);
+  const isConfirmed = booking.status === "confirmed" || booking.status === "completed";
+  const needsPayment = isConfirmed && booking.payment_method === "Prepaid" && booking.payment_status === "pending";
+  const isPaid = isConfirmed && !needsPayment;
   const agreedOffer = myRole === "organizer" ? booking.talent_offer_vnd : booking.organizer_offer_vnd;
 
   async function handleConfirm() {
@@ -45,6 +57,35 @@ export function OrderDetailContent({ role, booking }: { role: Role; booking: Boo
     const result = await runAction(rejectBooking(booking.id), { success: "Booking cancelled." });
     setPending(false);
     if (!("error" in result)) router.refresh();
+  }
+
+  async function handleMarkPaid() {
+    setPending(true);
+    const result = await runAction(markBookingPaid(booking.id), { success: "Payment confirmed." });
+    setPending(false);
+    if (!("error" in result)) {
+      setPaymentOpen(false);
+      router.refresh();
+    }
+  }
+
+  function handleAddToCalendar() {
+    if (!booking.booked_date || !booking.booked_time || !booking.booked_end_time) return;
+    const ics = buildIcsContent({
+      uid: booking.id,
+      title: booking.package_title,
+      date: booking.booked_date,
+      startTime: booking.booked_time,
+      endTime: booking.booked_end_time,
+      location: booking.venue_address ?? booking.venue_city_name,
+    });
+    const blob = new Blob([ics], { type: "text/calendar" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${booking.package_title.replace(/\s+/g, "-")}.ics`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -123,6 +164,55 @@ export function OrderDetailContent({ role, booking }: { role: Role; booking: Boo
                 Waiting for {otherRole === "talent" ? "Talent" : "Organizer"}&apos;s Offer
               </p>
             )}
+          </div>
+        )}
+
+        {needsPayment && (
+          <div className="flex flex-col gap-2">
+            {myRole === "organizer" ? (
+              <Button
+                className="h-11 w-full rounded-[6px]"
+                disabled={pending}
+                onClick={() => setPaymentOpen(true)}
+              >
+                Proceed to Payment
+              </Button>
+            ) : (
+              <p className="text-center text-xs text-muted-foreground">
+                Waiting for the organizer to complete payment.
+              </p>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 w-full rounded-[6px] text-muted-foreground"
+              disabled={pending}
+              onClick={handleCancel}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+
+        {isPaid && (
+          <div className="flex flex-col gap-2">
+            {myRole === "organizer" && (
+              <Button className="h-11 w-full rounded-[6px]" onClick={() => setCheckInOpen(true)}>
+                Generate check-in QR Code for Talent
+              </Button>
+            )}
+            <Button variant="secondary" className="h-11 w-full rounded-[6px]" onClick={handleAddToCalendar}>
+              Add to Calendar
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 w-full rounded-[6px] text-muted-foreground"
+              disabled={pending}
+              onClick={handleCancel}
+            >
+              Cancel
+            </Button>
           </div>
         )}
       </div>
@@ -206,7 +296,98 @@ export function OrderDetailContent({ role, booking }: { role: Role; booking: Boo
           }}
         />
       )}
+
+      {paymentOpen && (
+        <PaymentDialog
+          bookingId={booking.id}
+          amountVnd={booking.price_vnd}
+          pending={pending}
+          onOpenChange={setPaymentOpen}
+          onConfirmPaid={handleMarkPaid}
+        />
+      )}
+
+      {checkInOpen && <CheckInQrDialog bookingId={booking.id} onOpenChange={setCheckInOpen} />}
     </div>
+  );
+}
+
+function PaymentDialog({
+  bookingId,
+  amountVnd,
+  pending,
+  onOpenChange,
+  onConfirmPaid,
+}: {
+  bookingId: string;
+  amountVnd: number;
+  pending: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirmPaid: () => void;
+}) {
+  const transferNote = `HOS${bookingId.slice(0, 8).toUpperCase()}`;
+  const bankAccountNumber = "0000111222333";
+  const bankName = "Heart of Show Bank";
+  const qrValue = `Bank: ${bankName}\nAccount: ${bankAccountNumber}\nAmount: ${amountVnd}\nNote: ${transferNote}`;
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>Payment - Final step</DialogTitle>
+          <DialogDescription>
+            Please make payment by bank transfer to account number below. Carefully check the content of the
+            transfer according to the instructions.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-2 text-sm">
+          <div className="flex items-center justify-between rounded-[8px] bg-white/5 p-3">
+            <span className="text-muted-foreground">Account number</span>
+            <span className="font-semibold text-foreground">{bankAccountNumber}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-[8px] bg-white/5 p-3">
+            <span className="text-muted-foreground">Bank name</span>
+            <span className="font-semibold text-foreground">{bankName}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-[8px] bg-white/5 p-3">
+            <span className="text-muted-foreground">Transfer note</span>
+            <span className="font-semibold text-foreground">{transferNote}</span>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-2 py-2">
+          <span className="text-xs text-muted-foreground">Scan this QR</span>
+          <QRCodeSVG value={qrValue} size={180} />
+        </div>
+        <Button onClick={onConfirmPaid} disabled={pending} className={cn("h-11 w-full rounded-[6px]")}>
+          {pending ? "Confirming..." : "I already did that"}
+        </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          *After completing the booking, we will send you a notification
+        </p>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CheckInQrDialog({
+  bookingId,
+  onOpenChange,
+}: {
+  bookingId: string;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>Check-in QR Code</DialogTitle>
+          <DialogDescription>Show this to the talent to check in at the event.</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-2 py-4">
+          <QRCodeSVG value={`HOS-CHECKIN:${bookingId}`} size={200} />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

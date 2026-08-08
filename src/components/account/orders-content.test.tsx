@@ -26,6 +26,7 @@ function makeBooking(overrides: Partial<BookingWithNames> = {}): BookingWithName
     booked_end_time: "21:00",
     payment_method: "Prepaid",
     status: "pending",
+    payment_status: "pending",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     package_title: "Acoustic Set",

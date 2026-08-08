@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertKycVerified } from "@/lib/supabase/kyc";
 import { timeRangesOverlap } from "@/lib/time-overlap";
+import type { PaymentMethod } from "@/lib/supabase/types";
 
 export async function createPackage(
   formData: FormData
@@ -295,11 +296,14 @@ async function actorRoleFor(
       awaitingResponseFrom: "talent" | "organizer" | null;
       talentOfferVnd: number;
       organizerOfferVnd: number;
+      paymentMethod: PaymentMethod;
     }
 > {
   const { data: booking } = await supabase
     .from("package_bookings")
-    .select("organizer_id, awaiting_response_from, talent_offer_vnd, organizer_offer_vnd, package:packages(talent_id)")
+    .select(
+      "organizer_id, awaiting_response_from, talent_offer_vnd, organizer_offer_vnd, payment_method, package:packages(talent_id)"
+    )
     .eq("id", bookingId)
     .single();
   if (!booking) return { error: "Booking not found." };
@@ -313,6 +317,7 @@ async function actorRoleFor(
     awaitingResponseFrom: booking.awaiting_response_from,
     talentOfferVnd: booking.talent_offer_vnd,
     organizerOfferVnd: booking.organizer_offer_vnd,
+    paymentMethod: booking.payment_method,
   };
 }
 
@@ -334,10 +339,44 @@ export async function confirmBookingOffer(
 
   // Confirming accepts the OTHER party's last offer.
   const agreedPrice = actor.role === "organizer" ? actor.talentOfferVnd : actor.organizerOfferVnd;
+  // Postpaid bookings settle after the event, so there's nothing to collect
+  // up front; Prepaid bookings stay 'pending' until the organizer pays.
+  const paymentStatus = actor.paymentMethod === "Postpaid" ? "complete" : "pending";
 
   const { error } = await supabase
     .from("package_bookings")
-    .update({ status: "confirmed", price_vnd: agreedPrice, awaiting_response_from: null })
+    .update({ status: "confirmed", price_vnd: agreedPrice, awaiting_response_from: null, payment_status: paymentStatus })
+    .eq("id", bookingId);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+/** Organizer confirms they've sent a Prepaid booking's bank transfer. */
+export async function markBookingPaid(bookingId: string): Promise<{ error: string } | { success: true }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
+
+  const { data: booking } = await supabase
+    .from("package_bookings")
+    .select("organizer_id, status, payment_method, payment_status")
+    .eq("id", bookingId)
+    .single();
+  if (!booking) return { error: "Booking not found." };
+  if (booking.organizer_id !== user.id) return { error: "Only the organizer can confirm payment for this booking." };
+  if (booking.status !== "confirmed" && booking.status !== "completed") {
+    return { error: "This booking isn't confirmed yet." };
+  }
+  if (booking.payment_method !== "Prepaid") return { error: "This booking doesn't require prepayment." };
+  if (booking.payment_status === "complete") return { success: true };
+
+  const { error } = await supabase
+    .from("package_bookings")
+    .update({ payment_status: "complete" })
     .eq("id", bookingId);
   if (error) return { error: error.message };
   return { success: true };

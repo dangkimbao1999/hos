@@ -43,6 +43,7 @@ function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDetail {
     address: null,
     payment_method: "Prepaid",
     status: "pending",
+    payment_status: "pending",
     created_at: "2026-08-01T00:00:00Z",
     updated_at: "2026-08-01T00:00:00Z",
     organizer_name: "Test Organizer",
