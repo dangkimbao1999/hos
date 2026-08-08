@@ -6,8 +6,10 @@ import { QRCodeSVG } from "qrcode.react";
 import {
   confirmBookingOffer,
   markBookingPaid,
+  organizerMarkComplete,
   rejectBooking,
   submitCounterOffer,
+  talentMarkComplete,
 } from "@/lib/supabase/package-actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { buildIcsContent } from "@/lib/ics";
+import { hasEndTimePassed } from "@/lib/booking-time";
 import { runAction } from "@/lib/toast-action";
 import type { BookingDetail, BookingParty } from "@/lib/supabase/types";
 import type { Role } from "@/lib/nav-items";
@@ -28,6 +31,9 @@ function capitalize(s: string) {
 }
 
 const NEGOTIATION_STATUSES = new Set(["pending", "dealing"]);
+
+/** Not designed in Figma yet -- flip this once the check-in flow itself is ready. */
+const CHECK_IN_QR_ENABLED = false;
 
 export function OrderDetailContent({ role, booking }: { role: Role; booking: BookingDetail }) {
   const router = useRouter();
@@ -43,6 +49,9 @@ export function OrderDetailContent({ role, booking }: { role: Role; booking: Boo
   const isConfirmed = booking.status === "confirmed" || booking.status === "completed";
   const needsPayment = isConfirmed && booking.payment_method === "Prepaid" && booking.payment_status === "pending";
   const isPaid = isConfirmed && !needsPayment;
+  const isFullyCompleted = booking.status === "completed";
+  const canMarkComplete =
+    booking.status === "confirmed" && hasEndTimePassed(booking.booked_date, booking.booked_end_time);
   const agreedOffer = myRole === "organizer" ? booking.talent_offer_vnd : booking.organizer_offer_vnd;
 
   async function handleConfirm() {
@@ -67,6 +76,22 @@ export function OrderDetailContent({ role, booking }: { role: Role; booking: Boo
       setPaymentOpen(false);
       router.refresh();
     }
+  }
+
+  async function handleTalentMarkComplete() {
+    setPending(true);
+    const result = await runAction(talentMarkComplete(booking.id), {
+      success: "Marked complete. The organizer has been notified.",
+    });
+    setPending(false);
+    if (!("error" in result)) router.refresh();
+  }
+
+  async function handleOrganizerMarkComplete() {
+    setPending(true);
+    const result = await runAction(organizerMarkComplete(booking.id), { success: "Booking completed." });
+    setPending(false);
+    if (!("error" in result)) router.refresh();
   }
 
   function handleAddToCalendar() {
@@ -196,7 +221,7 @@ export function OrderDetailContent({ role, booking }: { role: Role; booking: Boo
 
         {isPaid && (
           <div className="flex flex-col gap-2">
-            {myRole === "organizer" && (
+            {CHECK_IN_QR_ENABLED && myRole === "organizer" && (
               <Button className="h-11 w-full rounded-[6px]" onClick={() => setCheckInOpen(true)}>
                 Generate check-in QR Code for Talent
               </Button>
@@ -204,6 +229,41 @@ export function OrderDetailContent({ role, booking }: { role: Role; booking: Boo
             <Button variant="secondary" className="h-11 w-full rounded-[6px]" onClick={handleAddToCalendar}>
               Add to Calendar
             </Button>
+
+            {!isFullyCompleted && myRole === "organizer" && (
+              <Button
+                className="h-11 w-full rounded-[6px]"
+                disabled={!canMarkComplete || pending}
+                onClick={handleOrganizerMarkComplete}
+              >
+                Mark as Completed
+              </Button>
+            )}
+            {!isFullyCompleted && myRole === "organizer" && booking.talent_marked_complete_at && (
+              <p className="text-center text-xs text-muted-foreground">
+                Talent marked this complete on {new Date(booking.talent_marked_complete_at).toLocaleString()}.
+              </p>
+            )}
+
+            {!isFullyCompleted && myRole === "talent" && !booking.talent_marked_complete_at && (
+              <Button
+                className="h-11 w-full rounded-[6px]"
+                disabled={!canMarkComplete || pending}
+                onClick={handleTalentMarkComplete}
+              >
+                Mark as Complete
+              </Button>
+            )}
+            {!isFullyCompleted && myRole === "talent" && booking.talent_marked_complete_at && (
+              <p className="text-center text-xs text-muted-foreground">
+                You marked this complete — waiting for the organizer.
+              </p>
+            )}
+
+            {isFullyCompleted && (
+              <p className="text-center text-xs text-muted-foreground">This booking is complete.</p>
+            )}
+
             <Button
               type="button"
               variant="ghost"

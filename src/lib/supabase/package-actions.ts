@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertKycVerified } from "@/lib/supabase/kyc";
+import { hasEndTimePassed } from "@/lib/booking-time";
 import { timeRangesOverlap } from "@/lib/time-overlap";
 import type { PaymentMethod } from "@/lib/supabase/types";
 
@@ -378,6 +379,64 @@ export async function markBookingPaid(bookingId: string): Promise<{ error: strin
     .from("package_bookings")
     .update({ payment_status: "complete" })
     .eq("id", bookingId);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+/** Talent flags that the event happened -- proof + a reminder notification, no status change. */
+export async function talentMarkComplete(bookingId: string): Promise<{ error: string } | { success: true }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
+
+  const { data: booking } = await supabase
+    .from("package_bookings")
+    .select("status, booked_date, booked_end_time, package:packages(talent_id)")
+    .eq("id", bookingId)
+    .single();
+  if (!booking) return { error: "Booking not found." };
+  const packageTalentId = (booking.package as unknown as { talent_id: string } | null)?.talent_id;
+  if (packageTalentId !== user.id) return { error: "Only the talent can mark this booking complete." };
+  if (booking.status !== "confirmed") return { error: "This booking isn't confirmed yet." };
+  if (!hasEndTimePassed(booking.booked_date, booking.booked_end_time)) {
+    return { error: "This booking can't be marked complete until its end time has passed." };
+  }
+
+  const { error } = await supabase
+    .from("package_bookings")
+    .update({ talent_marked_complete_at: new Date().toISOString() })
+    .eq("id", bookingId);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+/** Organizer marks the booking fully completed -- the only action that moves status to 'completed'. */
+export async function organizerMarkComplete(bookingId: string): Promise<{ error: string } | { success: true }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+  const kycError = await assertKycVerified(supabase, user.id);
+  if (kycError) return kycError;
+
+  const { data: booking } = await supabase
+    .from("package_bookings")
+    .select("organizer_id, status, booked_date, booked_end_time")
+    .eq("id", bookingId)
+    .single();
+  if (!booking) return { error: "Booking not found." };
+  if (booking.organizer_id !== user.id) return { error: "Only the organizer can mark this booking completed." };
+  if (booking.status !== "confirmed") return { error: "This booking isn't confirmed yet." };
+  if (!hasEndTimePassed(booking.booked_date, booking.booked_end_time)) {
+    return { error: "This booking can't be marked completed until its end time has passed." };
+  }
+
+  const { error } = await supabase.from("package_bookings").update({ status: "completed" }).eq("id", bookingId);
   if (error) return { error: error.message };
   return { success: true };
 }

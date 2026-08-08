@@ -260,6 +260,8 @@ export interface PackageBookingRow {
   payment_method: PaymentMethod;
   status: BookingStatus;
   payment_status: BookingPaymentStatus;
+  /** Set when the talent flags the event as done -- proof + a reminder to the organizer, not a status change. */
+  talent_marked_complete_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -335,6 +337,7 @@ export interface ReviewWithReviewer extends ReviewRow {
 export type NotificationKind =
   | "application_received"
   | "application_status"
+  | "booking_marked_complete_by_talent"
   | "booking_received"
   | "booking_status"
   | "counter_offer_received"
