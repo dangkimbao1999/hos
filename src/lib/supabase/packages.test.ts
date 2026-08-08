@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
-import { getBookingDetail, isRelatedPackage, withTalentInfo } from "@/lib/supabase/packages";
+import { getBookingDetail, isRelatedPackage, listTalentBusySlots, withTalentInfo } from "@/lib/supabase/packages";
 import { createClient } from "@/lib/supabase/server";
 import type { PackageRow, PackageWithTalent } from "@/lib/supabase/types";
 
@@ -16,8 +16,14 @@ function makeChain(data: unknown) {
   return chain;
 }
 
+let busySlotsRpcData: unknown = [];
+
 mock.module("@/lib/supabase/server", () => ({
   createClient: async () => ({
+    rpc: async (fn: string, args: Record<string, unknown>) => {
+      if (fn === "get_talent_busy_slots") return { data: busySlotsRpcData };
+      throw new Error(`unexpected rpc ${fn} with args ${JSON.stringify(args)}`);
+    },
     from: (table: string) => {
       if (table === "package_bookings") {
         return makeChain({
@@ -30,6 +36,7 @@ mock.module("@/lib/supabase/server", () => ({
           awaiting_response_from: "talent",
           booked_date: "2026-12-01",
           booked_time: "20:00",
+          booked_end_time: "21:00",
           city_id: "city-hcm",
           address: "123 Main St",
           payment_method: "Prepaid",
@@ -45,8 +52,6 @@ mock.module("@/lib/supabase/server", () => ({
           working_method: "Freelance",
           skill_tags: ["Guitar", "Vocals"],
           talent_id: "talent-1",
-          start_time: "20:00:00",
-          end_time: "22:00:00",
         });
       }
       if (table === "profiles") {
@@ -248,10 +253,28 @@ describe("getBookingDetail", () => {
       package_description: "A chill set.",
       package_working_method: "Freelance",
       package_skill_tags: ["Guitar", "Vocals"],
-      package_start_time: "20:00:00",
-      package_end_time: "22:00:00",
       venue_city_name: "HCM City",
       venue_address: "123 Main St",
     });
+  });
+});
+
+describe("listTalentBusySlots", () => {
+  test("maps the RPC's snake_case columns to the app's camelCase BusySlot shape", async () => {
+    busySlotsRpcData = [
+      { busy_date: "2026-09-05", start_time: "14:00:00", end_time: "15:00:00" },
+      { busy_date: "2026-09-06", start_time: "09:00:00", end_time: "10:00:00" },
+    ];
+    const result = await listTalentBusySlots("talent-1");
+    expect(result).toEqual([
+      { date: "2026-09-05", startTime: "14:00:00", endTime: "15:00:00" },
+      { date: "2026-09-06", startTime: "09:00:00", endTime: "10:00:00" },
+    ]);
+    busySlotsRpcData = [];
+  });
+
+  test("returns an empty array when the talent has no busy slots", async () => {
+    busySlotsRpcData = [];
+    expect(await listTalentBusySlots("talent-1")).toEqual([]);
   });
 });

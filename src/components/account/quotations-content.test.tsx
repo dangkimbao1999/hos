@@ -31,6 +31,8 @@ function makeQuotation(overrides: Partial<QuotationWithNames> = {}): QuotationWi
     talent_id: "talent-1",
     event_name: "Wedding",
     event_date: "2026-12-01",
+    event_start_time: "20:00",
+    event_end_time: "21:00",
     venue: "Riverside Palace",
     city_id: "city-hcm",
     address: "123 Main St",

@@ -20,12 +20,18 @@ function makeSupabase(options: {
   user: { id: string } | null;
   kycStatus?: string;
   booking?: FakeBooking;
+  packageTalentId?: string;
+  busySlots?: { busy_date: string; start_time: string; end_time: string }[];
 }) {
   const inserted: { packages?: Record<string, unknown>; cart_items?: Record<string, unknown> } = {};
   const updated: { packages?: Record<string, unknown>; package_bookings?: Record<string, unknown> } = {};
 
   return {
     auth: { getUser: async () => ({ data: { user: options.user } }) },
+    rpc: async (fn: string, args: Record<string, unknown>) => {
+      if (fn === "get_talent_busy_slots") return { data: options.busySlots ?? [] };
+      throw new Error(`unexpected rpc ${fn} with args ${JSON.stringify(args)}`);
+    },
     from: (table: string) => {
       if (table === "profiles") {
         return {
@@ -38,6 +44,11 @@ function makeSupabase(options: {
       }
       if (table === "packages") {
         return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: { talent_id: options.packageTalentId ?? TALENT_ID } }),
+            }),
+          }),
           insert: async (row: Record<string, unknown>) => {
             inserted.packages = row;
             return { error: null };
@@ -383,6 +394,8 @@ describe("addToCart", () => {
     formData.set("priceVnd", "1000000");
     formData.set("cityId", "city-hcm");
     formData.set("address", "123 Main St");
+    formData.set("bookedTime", "10:00");
+    formData.set("bookedEndTime", "11:00");
     for (const [key, value] of Object.entries(overrides)) formData.set(key, value);
     return formData;
   }
@@ -403,5 +416,62 @@ describe("addToCart", () => {
   it("requires a perform address", async () => {
     supabaseMock = makeSupabase({ user: { id: USER_ID } });
     expect(await addToCart(cartFormData({ address: "" }))).toEqual({ error: "Enter the perform address." });
+  });
+
+  it("requires an end time", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    expect(await addToCart(cartFormData({ bookedEndTime: "" }))).toEqual({
+      error: "Enter an end time for this booking.",
+    });
+  });
+
+  it("rejects an end time at or before the start time", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    expect(await addToCart(cartFormData({ bookedTime: "10:00", bookedEndTime: "10:00" }))).toEqual({
+      error: "End time must be after start time.",
+    });
+  });
+
+  it("persists the booked start and end time", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    await addToCart(cartFormData({ bookedTime: "14:00", bookedEndTime: "15:30" }));
+    expect(supabaseMock.__inserted.cart_items).toMatchObject({
+      booked_time: "14:00",
+      booked_end_time: "15:30",
+    });
+  });
+
+  it("rejects a booking that overlaps the talent's existing confirmed schedule, even from a different organizer", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: USER_ID },
+      busySlots: [{ busy_date: "2026-12-01", start_time: "10:30:00", end_time: "12:00:00" }],
+    });
+    const result = await addToCart(
+      cartFormData({ bookedDate: "2026-12-01", bookedTime: "10:00", bookedEndTime: "11:00" })
+    );
+    expect(result).toEqual({ error: "This talent is already booked 10:30-12:00 on 2026-12-01." });
+    expect(supabaseMock.__inserted.cart_items).toBeUndefined();
+  });
+
+  it("allows a booking that does not overlap any busy slot", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: USER_ID },
+      busySlots: [{ busy_date: "2026-12-01", start_time: "10:30:00", end_time: "12:00:00" }],
+    });
+    const result = await addToCart(
+      cartFormData({ bookedDate: "2026-12-01", bookedTime: "13:00", bookedEndTime: "14:00" })
+    );
+    expect(result).toEqual({ success: true });
+  });
+
+  it("ignores busy slots on a different date", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: USER_ID },
+      busySlots: [{ busy_date: "2026-12-02", start_time: "10:00:00", end_time: "11:00:00" }],
+    });
+    const result = await addToCart(
+      cartFormData({ bookedDate: "2026-12-01", bookedTime: "10:00", bookedEndTime: "11:00" })
+    );
+    expect(result).toEqual({ success: true });
   });
 });

@@ -30,6 +30,7 @@ function makeCartItem(overrides: Partial<CartItemWithPackage> = {}): CartItemWit
     price_vnd: 5_000_000,
     booked_date: "2026-12-01",
     booked_time: "20:00",
+    booked_end_time: "21:00",
     city_id: null,
     address: null,
     created_at: new Date().toISOString(),

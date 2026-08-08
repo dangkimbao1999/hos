@@ -23,6 +23,7 @@ mock.module("@/lib/supabase/packages", () => ({
     relatedArgs = { talentId, categories, genre, limit };
     return [];
   },
+  listTalentBusySlots: async () => [],
 }));
 mock.module("@/lib/supabase/reviews", () => ({
   getTalentReviewSummary: async () => ({ avgRating: null, count: 0, reviews: [] }),

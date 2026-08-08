@@ -3,12 +3,31 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   BookingDetail,
   BookingWithNames,
+  BusySlot,
   CartItemWithPackage,
   PackageRow,
   PackageWithLookupNames,
   PackageWithTalent,
   ProfileWithLookupNames,
 } from "@/lib/supabase/types";
+
+/**
+ * Every confirmed engagement on a talent's calendar, regardless of which
+ * organizer booked it — so any organizer browsing this talent can avoid
+ * picking a colliding time. Backed by get_talent_busy_slots(), a
+ * SECURITY DEFINER function that only ever returns date/time (see its
+ * migration for why: RLS on package_bookings/event_applications otherwise
+ * correctly hides other organizers' bookings entirely).
+ */
+export async function listTalentBusySlots(talentId: string): Promise<BusySlot[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_talent_busy_slots", { p_talent_id: talentId });
+  return (data ?? []).map((row: { busy_date: string; start_time: string; end_time: string }) => ({
+    date: row.busy_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+  }));
+}
 
 export async function getTalentBySlug(slug: string): Promise<ProfileWithLookupNames | null> {
   const supabase = await createClient();
@@ -287,7 +306,7 @@ export async function getBookingDetail(bookingId: string): Promise<BookingDetail
 
   const { data: pkg } = await supabase
     .from("packages")
-    .select("title, description, working_method, skill_tags, talent_id, start_time, end_time")
+    .select("title, description, working_method, skill_tags, talent_id")
     .eq("id", booking.package_id)
     .single();
   if (!pkg) return null;
@@ -308,8 +327,6 @@ export async function getBookingDetail(bookingId: string): Promise<BookingDetail
     package_description: pkg.description,
     package_working_method: pkg.working_method,
     package_skill_tags: pkg.skill_tags,
-    package_start_time: pkg.start_time,
-    package_end_time: pkg.end_time,
     venue_city_name: booking.city_id ? (cityNames.get(booking.city_id) ?? null) : null,
     venue_address: booking.address,
   };

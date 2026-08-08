@@ -58,6 +58,7 @@ function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDetail {
     awaiting_response_from: "talent",
     booked_date: "2026-12-01",
     booked_time: "20:00",
+    booked_end_time: "21:00",
     city_id: "city-hcm",
     address: "123 Main St",
     payment_method: "Prepaid",
@@ -70,8 +71,6 @@ function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDetail {
     package_description: "A chill acoustic set.",
     package_working_method: "Freelance",
     package_skill_tags: ["Guitar", "Vocals"],
-    package_start_time: "20:00:00",
-    package_end_time: "22:00:00",
     venue_city_name: "HCM City",
     venue_address: "123 Main St",
     ...overrides,
@@ -88,6 +87,16 @@ describe("OrderDetailContent — display", () => {
     expect(screen.getByText("Freelance")).toBeInTheDocument();
     expect(screen.getByText("Guitar")).toBeInTheDocument();
     expect(screen.getByText("Vocals")).toBeInTheDocument();
+  });
+
+  it("shows the specific booked start-end time, not the package's availability window", () => {
+    render(<OrderDetailContent role="talent" booking={makeBooking({ booked_time: "14:00", booked_end_time: "15:00" })} />);
+    expect(screen.getByText("14:00 - 15:00")).toBeInTheDocument();
+  });
+
+  it("falls back to Flexible when no specific time was booked", () => {
+    render(<OrderDetailContent role="talent" booking={makeBooking({ booked_time: null, booked_end_time: null })} />);
+    expect(screen.getByText("Flexible")).toBeInTheDocument();
   });
 });
 

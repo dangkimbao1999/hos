@@ -18,6 +18,19 @@ export interface LookupOption {
   name: string;
 }
 
+/**
+ * A talent's already-committed time window (confirmed package booking or
+ * accepted event application) — from the get_talent_busy_slots() RPC, which
+ * deliberately exposes only date/time across every organizer's bookings for
+ * that talent, not who booked it or for how much, so other organizers can
+ * avoid scheduling a collision without seeing another organizer's booking.
+ */
+export interface BusySlot {
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
 /** A top-level category with its (possibly empty) subcategories — from the self-referencing categories table. */
 export interface CategoryOption extends LookupOption {
   subcategories: LookupOption[];
@@ -199,7 +212,13 @@ export interface CartItemRow {
   package_id: string;
   price_vnd: number;
   booked_date: string | null;
+  /** Start of the actual performance slot the organizer wants — a specific
+   * time within the package's (wider) availability window. */
   booked_time: string | null;
+  /** Organizer-chosen end of that slot — the package's own end_time is just
+   * when the talent's availability window closes, not how long any one
+   * booking runs. */
+  booked_end_time: string | null;
   /** Where the performance actually happens — distinct from the package's own (base) city. */
   city_id: string | null;
   address: string | null;
@@ -227,6 +246,7 @@ export interface PackageBookingRow {
   awaiting_response_from: BookingParty | null;
   booked_date: string | null;
   booked_time: string | null;
+  booked_end_time: string | null;
   /** Where the performance actually happens — distinct from the package's own (base) city. */
   city_id: string | null;
   address: string | null;
@@ -251,8 +271,6 @@ export interface BookingDetail extends PackageBookingRow {
   package_description: string | null;
   package_working_method: string | null;
   package_skill_tags: string[];
-  package_start_time: string;
-  package_end_time: string;
   /** The perform location entered by the organizer for this specific booking — not the package's own city. */
   venue_city_name: string | null;
   venue_address: string | null;
@@ -266,6 +284,10 @@ export interface QuotationRow {
   talent_id: string;
   event_name: string;
   event_date: string | null;
+  /** The requested performance slot — a specific time, not an availability
+   * window (a quotation isn't tied to any one package). */
+  event_start_time: string | null;
+  event_end_time: string | null;
   venue: string | null;
   city_id: string | null;
   address: string | null;
@@ -307,6 +329,7 @@ export type NotificationKind =
   | "application_status"
   | "booking_received"
   | "booking_status"
+  | "counter_offer_received"
   | "kyc_status"
   | "quotation_received"
   | "quotation_responded";

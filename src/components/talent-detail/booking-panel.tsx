@@ -10,8 +10,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { addToCart } from "@/lib/supabase/package-actions";
-import type { LookupOption, PackageRow, PackageWithLookupNames } from "@/lib/supabase/types";
+import type { BusySlot, LookupOption, PackageRow, PackageWithLookupNames } from "@/lib/supabase/types";
 import { runAction } from "@/lib/toast-action";
+import { timeRangesOverlap } from "@/lib/time-overlap";
 
 function formatVnd(amount: number) {
   return `${amount.toLocaleString("en-US")} VND`;
@@ -30,10 +31,12 @@ export function BookingPanel({
   talentName,
   packages,
   cities,
+  busySlots,
 }: {
   talentName: string;
   packages: PackageWithLookupNames[];
   cities: LookupOption[];
+  busySlots: BusySlot[];
 }) {
   const router = useRouter();
   const [selectedPackage, setSelectedPackage] = useState(0);
@@ -42,8 +45,11 @@ export function BookingPanel({
   const [error, setError] = useState<string | undefined>();
   const [bookedDate, setBookedDate] = useState("");
   const [bookedTime, setBookedTime] = useState("");
+  const [bookedEndTime, setBookedEndTime] = useState("");
   const [cityId, setCityId] = useState("");
   const [address, setAddress] = useState("");
+
+  const busySlotsForDate = bookedDate ? busySlots.filter((slot) => slot.date === bookedDate) : [];
 
   const visiblePackages = showAll ? packages : packages.slice(0, 3);
   const hasPackages = packages.length > 0;
@@ -55,6 +61,7 @@ export function BookingPanel({
     setSelectedPackage(index);
     setBookedDate("");
     setBookedTime(packages[index]?.start_time.slice(0, 5) ?? "");
+    setBookedEndTime("");
   }
 
   async function handleAddToCart() {
@@ -65,6 +72,23 @@ export function BookingPanel({
     }
     if (!allowedWeekday(selectedPkg, bookedDate)) {
       setError(`This package is only available on: ${selectedPkg.repeat_days?.join(", ")}.`);
+      return;
+    }
+    if (!bookedEndTime) {
+      setError("Enter an end time for this booking.");
+      return;
+    }
+    if (bookedEndTime <= bookedTime) {
+      setError("End time must be after start time.");
+      return;
+    }
+    const conflict = busySlotsForDate.find((slot) =>
+      timeRangesOverlap(bookedTime, bookedEndTime, slot.startTime, slot.endTime)
+    );
+    if (conflict) {
+      setError(
+        `${talentName} is already booked ${conflict.startTime.slice(0, 5)}-${conflict.endTime.slice(0, 5)} on ${bookedDate}.`
+      );
       return;
     }
     if (!cityId) {
@@ -82,6 +106,7 @@ export function BookingPanel({
     formData.set("priceVnd", String(selectedPkg.price_min_vnd));
     formData.set("bookedDate", bookedDate);
     formData.set("bookedTime", bookedTime);
+    formData.set("bookedEndTime", bookedEndTime);
     formData.set("cityId", cityId);
     formData.set("address", address);
     const result = await runAction(addToCart(formData), { success: "Added to cart." });
@@ -152,17 +177,38 @@ export function BookingPanel({
 
           {selectedPkg && (
             <div className="flex flex-col gap-2">
-              <Label className="text-sm text-muted-foreground">Booking Date &amp; Time</Label>
+              <Label className="text-sm text-muted-foreground">Booking Date</Label>
+              <Input
+                type="date"
+                value={bookedDate}
+                min={selectedPkg.start_date}
+                max={selectedPkg.end_date}
+                onChange={(e) => setBookedDate(e.target.value)}
+                className="h-11 rounded-[6px]"
+                aria-label="Booking date"
+              />
+              {selectedPkg.repeat_on && selectedPkg.repeat_days && selectedPkg.repeat_days.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Available on: {selectedPkg.repeat_days.join(", ")}
+                </p>
+              )}
+              {busySlotsForDate.length > 0 && (
+                <p className="text-xs text-destructive">
+                  Already booked on this date: {busySlotsForDate
+                    .map((slot) => `${slot.startTime.slice(0, 5)}-${slot.endTime.slice(0, 5)}`)
+                    .join(", ")}
+                  &mdash; pick a window outside these.
+                </p>
+              )}
+
+              <Label className="mt-1 text-sm text-muted-foreground">
+                Start Time &ndash; End Time<span className="text-primary">*</span>
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {talentName} is available {selectedPkg.start_time.slice(0, 5)}&ndash;
+                {selectedPkg.end_time.slice(0, 5)} — pick the specific window you need them for.
+              </p>
               <div className="grid grid-cols-2 gap-3">
-                <Input
-                  type="date"
-                  value={bookedDate}
-                  min={selectedPkg.start_date}
-                  max={selectedPkg.end_date}
-                  onChange={(e) => setBookedDate(e.target.value)}
-                  className="h-11 rounded-[6px]"
-                  aria-label="Booking date"
-                />
                 <Input
                   type="time"
                   value={bookedTime}
@@ -170,14 +216,18 @@ export function BookingPanel({
                   max={selectedPkg.end_time.slice(0, 5)}
                   onChange={(e) => setBookedTime(e.target.value)}
                   className="h-11 rounded-[6px]"
-                  aria-label="Booking time"
+                  aria-label="Booking start time"
+                />
+                <Input
+                  type="time"
+                  value={bookedEndTime}
+                  min={bookedTime || selectedPkg.start_time.slice(0, 5)}
+                  max={selectedPkg.end_time.slice(0, 5)}
+                  onChange={(e) => setBookedEndTime(e.target.value)}
+                  className="h-11 rounded-[6px]"
+                  aria-label="Booking end time"
                 />
               </div>
-              {selectedPkg.repeat_on && selectedPkg.repeat_days && selectedPkg.repeat_days.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Available on: {selectedPkg.repeat_days.join(", ")}
-                </p>
-              )}
             </div>
           )}
 

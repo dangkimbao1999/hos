@@ -36,11 +36,12 @@ export async function listBillingData(
   if (role === "talent") {
     const { data: myPackages } = await supabase
       .from("packages")
-      .select("id, title, location")
+      .select("id, title, city_id")
       .eq("talent_id", profileId);
 
     if (myPackages && myPackages.length > 0) {
       const packageById = new Map(myPackages.map((p) => [p.id, p]));
+      const cityNameById = await mapLookupNames(supabase, "cities", myPackages.map((p) => p.city_id));
       const { data: bookings } = await supabase
         .from("package_bookings")
         .select("organizer_id, package_id, booked_date, price_vnd, created_at")
@@ -57,7 +58,7 @@ export async function listBillingData(
           if (!pkg) continue;
           let group = groups.find((g) => g.title === pkg.title);
           if (!group) {
-            group = { title: pkg.title, venue: pkg.location, lines: [] };
+            group = { title: pkg.title, venue: cityNameById.get(pkg.city_id) ?? "", lines: [] };
             groups.push(group);
           }
           group.lines.push({
@@ -118,9 +119,10 @@ export async function listBillingData(
     if (bookings && bookings.length > 0) {
       const { data: packages } = await supabase
         .from("packages")
-        .select("id, title, location, talent_id")
+        .select("id, title, city_id, talent_id")
         .in("id", bookings.map((b) => b.package_id));
       const packageById = new Map((packages ?? []).map((p) => [p.id, p]));
+      const cityNameById = await mapLookupNames(supabase, "cities", (packages ?? []).map((p) => p.city_id));
 
       const talentIds = [...new Set((packages ?? []).map((p) => p.talent_id))];
       const { data: talents } = await supabase.from("profiles").select("id, full_name").in("id", talentIds);
@@ -131,7 +133,7 @@ export async function listBillingData(
         if (!pkg) continue;
         let group = groups.find((g) => g.title === pkg.title);
         if (!group) {
-          group = { title: pkg.title, venue: pkg.location, lines: [] };
+          group = { title: pkg.title, venue: cityNameById.get(pkg.city_id) ?? "", lines: [] };
           groups.push(group);
         }
         group.lines.push({

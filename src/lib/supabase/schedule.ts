@@ -76,16 +76,17 @@ export async function listScheduleEntries(profileId: string, role: Role): Promis
     if (bookings && bookings.length > 0) {
       const { data: packages } = await supabase
         .from("packages")
-        .select("id, title, location, start_date, start_time, end_time")
+        .select("id, title, city_id, start_date, start_time, end_time")
         .in("id", bookings.map((b) => b.package_id));
       const packageById = new Map((packages ?? []).map((p) => [p.id, p]));
+      const cityNameById = await mapLookupNames(supabase, "cities", (packages ?? []).map((p) => p.city_id));
 
       for (const booking of bookings) {
         const pkg = packageById.get(booking.package_id);
         if (!pkg) continue;
         entries.push({
           title: pkg.title,
-          venue: pkg.location,
+          venue: cityNameById.get(pkg.city_id) ?? "",
           date: booking.booked_date ?? pkg.start_date,
           startHour: timeToHour(booking.booked_time ?? pkg.start_time),
           endHour: timeToHour(pkg.end_time),
@@ -139,9 +140,10 @@ export async function listScheduleEntries(profileId: string, role: Role): Promis
       if (bookings && bookings.length > 0) {
         const { data: packages } = await supabase
           .from("packages")
-          .select("id, title, location, start_date, start_time, end_time")
+          .select("id, title, city_id, start_date, start_time, end_time")
           .in("id", bookings.map((b) => b.package_id));
         const packageById = new Map((packages ?? []).map((p) => [p.id, p]));
+        const cityNameById = await mapLookupNames(supabase, "cities", (packages ?? []).map((p) => p.city_id));
 
         const organizerIds = [...new Set(bookings.map((b) => b.organizer_id))];
         const { data: organizers } = await supabase.from("profiles").select("id, full_name").in("id", organizerIds);
@@ -152,7 +154,7 @@ export async function listScheduleEntries(profileId: string, role: Role): Promis
           if (!pkg) continue;
           entries.push({
             title: `${organizerNameById.get(booking.organizer_id) ?? "Organizer"} — ${pkg.title}`,
-            venue: pkg.location,
+            venue: cityNameById.get(pkg.city_id) ?? "",
             date: booking.booked_date ?? pkg.start_date,
             startHour: timeToHour(booking.booked_time ?? pkg.start_time),
             endHour: timeToHour(pkg.end_time),

@@ -89,8 +89,12 @@ export function RequestQuoteDialog({
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <Field label="Event Name" name="eventName" placeholder="Private Wedding Reception" required />
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Event Date" name="eventDate" type="date" />
+                <Field label="Event Date" name="eventDate" type="date" required />
                 <Field label="Venue" name="venue" placeholder="Riverside Palace" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Start Time" name="eventStartTime" type="time" required />
+                <Field label="End Time" name="eventEndTime" type="time" required />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-2">
