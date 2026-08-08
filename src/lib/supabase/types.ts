@@ -206,6 +206,29 @@ export interface PackageWithTalent extends PackageRow {
   city_name: string;
 }
 
+export type DiscoverSort = "newest" | "price_asc" | "price_desc";
+
+/** The organizer Discover grid's current filter/sort/search selection — mirrors search_discover_packages()'s params. */
+export interface DiscoverFilters {
+  categoryId: string | null;
+  subcategoryId: string | null;
+  cityId: string | null;
+  priceMin: number;
+  priceMax: number;
+  hashtags: string[];
+  dateStart: string | null;
+  dateEnd: string | null;
+  search: string | null;
+  sort: DiscoverSort;
+}
+
+/** Keyset pagination cursor for search_discover_packages() — the last-loaded row's sort key + id. */
+export interface DiscoverCursor {
+  createdAt: string;
+  priceMin: number;
+  id: string;
+}
+
 export interface CartItemRow {
   id: string;
   organizer_id: string;

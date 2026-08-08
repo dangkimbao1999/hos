@@ -5,6 +5,8 @@ import type {
   BookingWithNames,
   BusySlot,
   CartItemWithPackage,
+  DiscoverCursor,
+  DiscoverFilters,
   PackageRow,
   PackageWithLookupNames,
   PackageWithTalent,
@@ -91,15 +93,49 @@ export async function withTalentInfo(
   });
 }
 
-/** Every active package with its talent's name/slug — for the organizer Discover grid. */
-export async function listDiscoverPackages(): Promise<PackageWithTalent[]> {
+export const DISCOVER_PAGE_SIZE = 15;
+
+/**
+ * A page of active packages matching the given filters, sorted, and
+ * keyset-paginated via `cursor` (the previous page's last row) instead of
+ * OFFSET — see search_discover_packages()'s migration for why: it keeps a
+ * "load 15 more" scroll a cheap indexable range scan no matter how deep
+ * the user has scrolled, rather than an ever-growing table skip.
+ */
+export async function searchDiscoverPackages(
+  filters: DiscoverFilters,
+  cursor: DiscoverCursor | null,
+  limit: number
+): Promise<PackageWithTalent[]> {
   const supabase = await createClient();
-  const { data: packages } = await supabase
-    .from("packages")
-    .select("*")
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
-  return withTalentInfo(supabase, packages ?? []);
+  const { data } = await supabase.rpc("search_discover_packages", {
+    p_category_id: filters.categoryId,
+    p_subcategory_id: filters.subcategoryId,
+    p_city_id: filters.cityId,
+    p_price_min: filters.priceMin,
+    p_price_max: filters.priceMax,
+    p_hashtags: filters.hashtags,
+    p_date_start: filters.dateStart,
+    p_date_end: filters.dateEnd,
+    p_search: filters.search,
+    p_sort: filters.sort,
+    p_cursor_created_at: cursor?.createdAt ?? null,
+    p_cursor_price_min: cursor?.priceMin ?? null,
+    p_cursor_id: cursor?.id ?? null,
+    p_limit: limit,
+  });
+  return data ?? [];
+}
+
+/** Distinct keywords of talents with at least one active package — suggestions for the Discover grid's hashtag filter. */
+export async function listDiscoverHashtagSuggestions(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: packages } = await supabase.from("packages").select("talent_id").eq("status", "active");
+  const talentIds = [...new Set((packages ?? []).map((p) => p.talent_id))];
+  if (talentIds.length === 0) return [];
+
+  const { data: talents } = await supabase.from("profiles").select("keywords").in("id", talentIds);
+  return [...new Set((talents ?? []).flatMap((t) => t.keywords))];
 }
 
 /** Admin-curated (is_most_popular = true, set directly in the DB — no admin portal yet) — for the organizer Home page. */
