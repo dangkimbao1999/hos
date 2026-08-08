@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { requestQuotation } from "@/lib/supabase/quotation-actions";
 import { runAction } from "@/lib/toast-action";
+import type { LookupOption } from "@/lib/supabase/types";
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
   const id = label.toLowerCase().replace(/\s+/g, "-");
@@ -21,7 +22,15 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<"in
   );
 }
 
-export function RequestQuoteDialog({ talentId, talentName }: { talentId: string; talentName: string }) {
+export function RequestQuoteDialog({
+  talentId,
+  talentName,
+  cities,
+}: {
+  talentId: string;
+  talentName: string;
+  cities: LookupOption[];
+}) {
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
@@ -81,7 +90,36 @@ export function RequestQuoteDialog({ talentId, talentName }: { talentId: string;
               <Field label="Event Name" name="eventName" placeholder="Private Wedding Reception" required />
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Event Date" name="eventDate" type="date" />
-                <Field label="Venue" name="venue" placeholder="Riverside Palace, HCMC" />
+                <Field label="Venue" name="venue" placeholder="Riverside Palace" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="quote-city" className="text-sm text-muted-foreground">
+                    Perform City<span className="text-primary">*</span>
+                  </Label>
+                  <select
+                    id="quote-city"
+                    name="cityId"
+                    required
+                    defaultValue=""
+                    className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    <option value="" disabled>
+                      Select a city
+                    </option>
+                    {cities.map((city) => (
+                      <option key={city.id} value={city.id} className="bg-background text-foreground">
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Field
+                  label="Perform Address"
+                  name="address"
+                  placeholder="321 Nam Ky Khoi Nghia, Dist. 1"
+                  required
+                />
               </div>
               <div className="flex flex-col gap-2">
                 <Label className="text-sm text-muted-foreground">Description</Label>

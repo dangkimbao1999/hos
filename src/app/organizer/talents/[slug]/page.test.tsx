@@ -27,6 +27,9 @@ mock.module("@/lib/supabase/packages", () => ({
 mock.module("@/lib/supabase/reviews", () => ({
   getTalentReviewSummary: async () => ({ avgRating: null, count: 0, reviews: [] }),
 }));
+mock.module("@/lib/supabase/lookups", () => ({
+  listCities: async () => [{ id: "city-hcm", name: "HCM City" }],
+}));
 mock.module("@/components/talent-detail/talent-detail-content", () => ({
   TalentDetailContent: (props: { talent: ProfileWithLookupNames }) => (
     <div data-testid="content">{props.talent.full_name}</div>

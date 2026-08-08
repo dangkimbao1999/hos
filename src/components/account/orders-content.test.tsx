@@ -1,25 +1,13 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-const toastCalls: { type: "error" | "success"; message: string }[] = [];
-mock.module("sonner", () => ({
-  toast: {
-    error: (message: string) => toastCalls.push({ type: "error", message }),
-    success: (message: string) => toastCalls.push({ type: "success", message }),
-  },
-}));
 mock.module("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
-mock.module("@/lib/supabase/package-actions", () => ({
-  acceptBooking: async () => ({ success: true as const }),
-  rejectBooking: async () => ({ success: true as const }),
-}));
 
 import { OrdersContent } from "@/components/account/orders-content";
 import type { BookingWithNames } from "@/lib/supabase/types";
 
 afterEach(() => {
   cleanup();
-  toastCalls.length = 0;
 });
 
 function makeBooking(overrides: Partial<BookingWithNames> = {}): BookingWithNames {
@@ -28,6 +16,11 @@ function makeBooking(overrides: Partial<BookingWithNames> = {}): BookingWithName
     package_id: "pkg-1",
     organizer_id: "org-1",
     price_vnd: 5_000_000,
+    talent_offer_vnd: 5_000_000,
+    organizer_offer_vnd: 5_000_000,
+    city_id: null,
+    address: null,
+    awaiting_response_from: "talent",
     booked_date: "2026-12-01",
     booked_time: "20:00",
     payment_method: "Prepaid",
@@ -41,12 +34,13 @@ function makeBooking(overrides: Partial<BookingWithNames> = {}): BookingWithName
   };
 }
 
-describe("OrdersContent — toasts", () => {
-  it("shows a success toast when a booking is accepted", async () => {
-    render(<OrdersContent role="talent" bookings={[makeBooking()]} />);
-    fireEvent.click(screen.getByRole("button", { name: /^accept$/i }));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(toastCalls).toContainEqual({ type: "success", message: "Booking accepted." });
+describe("OrdersContent — order detail link", () => {
+  it("links each row to the role's order detail route for that booking", () => {
+    render(<OrdersContent role="talent" bookings={[makeBooking({ id: "booking-42" })]} />);
+    expect(screen.getByRole("link", { name: /view order details/i })).toHaveAttribute(
+      "href",
+      "/talent/account/orders/booking-42"
+    );
   });
 });
 

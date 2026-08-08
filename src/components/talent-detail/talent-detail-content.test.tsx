@@ -58,6 +58,8 @@ function makePackage(overrides: Partial<PackageWithLookupNames> = {}): PackageWi
     residency: null,
     city_id: "city-hcm",
     city_name: "HCM City",
+    working_method: null,
+    skill_tags: [],
     repeat_on: false,
     repeat_days: null,
     start_date: "2026-08-01",
@@ -96,6 +98,7 @@ describe("TalentDetailContent — cover photo", () => {
         packages={[]}
         relatedPackages={[]}
         reviewSummary={reviewSummary}
+        cities={[]}
       />
     );
     const img = screen.getByAltText("") as HTMLImageElement;
@@ -111,6 +114,7 @@ describe("TalentDetailContent — Overview tab", () => {
         packages={[]}
         relatedPackages={[]}
         reviewSummary={reviewSummary}
+        cities={[]}
       />
     );
     expect(screen.getByText("DJ Sets")).toBeInTheDocument();
@@ -124,6 +128,7 @@ describe("TalentDetailContent — Overview tab", () => {
         packages={[makePackage()]}
         relatedPackages={[makeRelatedPackage({ category_name: "Live Band" })]}
         reviewSummary={reviewSummary}
+        cities={[]}
       />
     );
 
@@ -149,6 +154,7 @@ describe("TalentDetailContent — About Talent tab", () => {
         packages={[]}
         relatedPackages={[]}
         reviewSummary={reviewSummary}
+        cities={[]}
       />
     );
     fireEvent.mouseDown(screen.getByRole("tab", { name: "About Talent" }));
@@ -168,6 +174,7 @@ describe("TalentDetailContent — About Talent tab", () => {
         packages={[]}
         relatedPackages={[]}
         reviewSummary={reviewSummary}
+        cities={[]}
       />
     );
     fireEvent.mouseDown(screen.getByRole("tab", { name: "About Talent" }));

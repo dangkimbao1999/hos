@@ -293,6 +293,20 @@ export function CreatePackageDialog({
                 defaultValue={editingPackage?.description ?? undefined}
               />
 
+              <div className="grid grid-cols-2 gap-3">
+                <Field
+                  label="Working Method"
+                  name="workingMethod"
+                  defaultValue={editingPackage?.working_method ?? undefined}
+                />
+                <Field
+                  label="Skill Tags"
+                  name="skillTags"
+                  placeholder="Skill Tags (comma separated)"
+                  defaultValue={editingPackage?.skill_tags.join(", ")}
+                />
+              </div>
+
               {error && <p className="text-sm text-destructive">{error}</p>}
 
               <div className="flex flex-col gap-2">

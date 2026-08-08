@@ -73,6 +73,11 @@ export function QuotationsContent({ role, quotations }: { role: Role; quotations
                     {q.event_date ? ` · ${q.event_date}` : ""}
                     {q.venue ? ` · ${q.venue}` : ""}
                   </span>
+                  {(q.city_name || q.address) && (
+                    <span className="text-xs text-muted-foreground">
+                      {[q.address, q.city_name].filter(Boolean).join(", ")}
+                    </span>
+                  )}
                   {q.description && <p className="text-xs text-muted-foreground">{q.description}</p>}
                   {(q.budget_min_vnd || q.budget_max_vnd) && (
                     <span className="text-xs text-muted-foreground">

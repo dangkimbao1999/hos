@@ -19,13 +19,17 @@ afterEach(() => {
   toastCalls.length = 0;
 });
 
+const CITIES = [{ id: "city-hcm", name: "HCM City" }];
+
 describe("RequestQuoteDialog — toasts", () => {
   it("shows a success toast when a quote request is sent", async () => {
-    render(<RequestQuoteDialog talentId="talent-1" talentName="Test Talent" />);
+    render(<RequestQuoteDialog talentId="talent-1" talentName="Test Talent" cities={CITIES} />);
     fireEvent.click(screen.getByRole("button", { name: /request a quote/i }));
     fireEvent.change(screen.getByPlaceholderText("Private Wedding Reception"), {
       target: { value: "My Event" },
     });
+    fireEvent.change(screen.getByLabelText(/perform city/i), { target: { value: "city-hcm" } });
+    fireEvent.change(screen.getByLabelText(/perform address/i), { target: { value: "123 Main St" } });
     fireEvent.click(screen.getByRole("button", { name: /send request/i }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(toastCalls).toContainEqual({ type: "success", message: "Quote request sent." });

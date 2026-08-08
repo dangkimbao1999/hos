@@ -30,7 +30,7 @@ describe("NotificationButton — toasts", () => {
     const notifications: NotificationItem[] = [
       { id: "n1", kind: "booking_status", message: "Test", time: "1h ago", unread: true },
     ];
-    render(<NotificationButton notifications={notifications} />);
+    render(<NotificationButton role="organizer" notifications={notifications} />);
     fireEvent.click(screen.getByRole("button", { name: /notifications/i }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(toastCalls).toContainEqual({
@@ -44,9 +44,97 @@ describe("NotificationButton — toasts", () => {
     const notifications: NotificationItem[] = [
       { id: "n1", kind: "booking_status", message: "Test", time: "1h ago", unread: true },
     ];
-    render(<NotificationButton notifications={notifications} />);
+    render(<NotificationButton role="organizer" notifications={notifications} />);
     fireEvent.click(screen.getByRole("button", { name: /notifications/i }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(toastCalls).toEqual([]);
+  });
+});
+
+describe("NotificationButton — clicking a notification navigates to what it's about", () => {
+  it("links application_received (organizer) to My Events", async () => {
+    markNotificationsReadResult = { success: true as const };
+    render(
+      <NotificationButton
+        role="organizer"
+        notifications={[
+          { id: "n1", kind: "application_received", message: "Test", time: "1h ago", unread: false },
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /notifications/i }));
+    expect(screen.getByRole("link", { name: /test/i })).toHaveAttribute("href", "/organizer/account/events");
+  });
+
+  it("links application_status (talent) to Schedule", async () => {
+    markNotificationsReadResult = { success: true as const };
+    render(
+      <NotificationButton
+        role="talent"
+        notifications={[{ id: "n1", kind: "application_status", message: "Test", time: "1h ago", unread: false }]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /notifications/i }));
+    expect(screen.getByRole("link", { name: /test/i })).toHaveAttribute("href", "/talent/account/schedule");
+  });
+
+  it("links booking_received (talent) to Orders", async () => {
+    markNotificationsReadResult = { success: true as const };
+    render(
+      <NotificationButton
+        role="talent"
+        notifications={[{ id: "n1", kind: "booking_received", message: "Test", time: "1h ago", unread: false }]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /notifications/i }));
+    expect(screen.getByRole("link", { name: /test/i })).toHaveAttribute("href", "/talent/account/orders");
+  });
+
+  it("links booking_status (organizer) to Orders", async () => {
+    markNotificationsReadResult = { success: true as const };
+    render(
+      <NotificationButton
+        role="organizer"
+        notifications={[{ id: "n1", kind: "booking_status", message: "Test", time: "1h ago", unread: false }]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /notifications/i }));
+    expect(screen.getByRole("link", { name: /test/i })).toHaveAttribute("href", "/organizer/account/orders");
+  });
+
+  it("links quotation_received (talent) to Quotations", async () => {
+    markNotificationsReadResult = { success: true as const };
+    render(
+      <NotificationButton
+        role="talent"
+        notifications={[{ id: "n1", kind: "quotation_received", message: "Test", time: "1h ago", unread: false }]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /notifications/i }));
+    expect(screen.getByRole("link", { name: /test/i })).toHaveAttribute("href", "/talent/account/quotations");
+  });
+
+  it("links quotation_responded (organizer) to Quotations", async () => {
+    markNotificationsReadResult = { success: true as const };
+    render(
+      <NotificationButton
+        role="organizer"
+        notifications={[{ id: "n1", kind: "quotation_responded", message: "Test", time: "1h ago", unread: false }]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /notifications/i }));
+    expect(screen.getByRole("link", { name: /test/i })).toHaveAttribute("href", "/organizer/account/quotations");
+  });
+
+  it("links kyc_status to the role's KYC page", async () => {
+    markNotificationsReadResult = { success: true as const };
+    render(
+      <NotificationButton
+        role="talent"
+        notifications={[{ id: "n1", kind: "kyc_status", message: "Test", time: "1h ago", unread: false }]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /notifications/i }));
+    expect(screen.getByRole("link", { name: /test/i })).toHaveAttribute("href", "/talent/kyc");
   });
 });

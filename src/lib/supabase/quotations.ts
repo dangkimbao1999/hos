@@ -1,19 +1,24 @@
+import { mapLookupNames } from "@/lib/supabase/lookups";
 import { createClient } from "@/lib/supabase/server";
 import type { QuotationWithNames } from "@/lib/supabase/types";
 
 async function withNames(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  rows: Omit<QuotationWithNames, "organizer_name" | "talent_name">[]
+  rows: Omit<QuotationWithNames, "organizer_name" | "talent_name" | "city_name">[]
 ): Promise<QuotationWithNames[]> {
   if (rows.length === 0) return [];
   const profileIds = [...new Set(rows.flatMap((r) => [r.organizer_id, r.talent_id]))];
-  const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", profileIds);
+  const [{ data: profiles }, cityNames] = await Promise.all([
+    supabase.from("profiles").select("id, full_name").in("id", profileIds),
+    mapLookupNames(supabase, "cities", rows.map((r) => r.city_id)),
+  ]);
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
 
   return rows.map((r) => ({
     ...r,
     organizer_name: nameById.get(r.organizer_id) ?? "Organizer",
     talent_name: nameById.get(r.talent_id) ?? "Talent",
+    city_name: r.city_id ? (cityNames.get(r.city_id) ?? null) : null,
   }));
 }
 
