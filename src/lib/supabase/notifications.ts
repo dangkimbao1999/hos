@@ -85,28 +85,45 @@ export async function listNotifications(
 
     const { data: bookings } = await supabase
       .from("package_bookings")
-      .select("package_id, status, updated_at")
+      .select("package_id, status, awaiting_response_from, updated_at")
       .eq("organizer_id", profileId)
-      .in("status", ["confirmed", "cancelled"]);
+      .in("status", ["confirmed", "cancelled", "dealing"]);
 
-    if (bookings && bookings.length > 0) {
+    // A 'dealing' booking only means something is outstanding — only notify
+    // when it's actually this organizer's turn to respond.
+    const relevantBookings = (bookings ?? []).filter(
+      (b) => b.status !== "dealing" || b.awaiting_response_from === "organizer"
+    );
+
+    if (relevantBookings.length > 0) {
       const { data: packages } = await supabase
         .from("packages")
-        .select("id, title")
-        .in("id", bookings.map((b) => b.package_id));
+        .select("id, title, talent_id")
+        .in("id", relevantBookings.map((b) => b.package_id));
       const packageById = new Map((packages ?? []).map((p) => [p.id, p]));
+      const talentIds = [...new Set((packages ?? []).map((p) => p.talent_id))];
+      const { data: talents } = await supabase.from("profiles").select("id, full_name").in("id", talentIds);
+      const talentNameById = new Map((talents ?? []).map((p) => [p.id, p.full_name]));
 
-      for (const booking of bookings) {
+      for (const booking of relevantBookings) {
         const pkg = packageById.get(booking.package_id);
         if (!pkg) continue;
-        raw.push({
-          kind: "booking_status",
-          message:
-            booking.status === "confirmed"
-              ? `Your booking for ${pkg.title} was confirmed.`
-              : `Your booking for ${pkg.title} was rejected.`,
-          at: booking.updated_at,
-        });
+        if (booking.status === "dealing") {
+          raw.push({
+            kind: "counter_offer_received",
+            message: `${talentNameById.get(pkg.talent_id) ?? "The talent"} sent a new offer for ${pkg.title}.`,
+            at: booking.updated_at,
+          });
+        } else {
+          raw.push({
+            kind: "booking_status",
+            message:
+              booking.status === "confirmed"
+                ? `Your booking for ${pkg.title} was confirmed.`
+                : `Your booking for ${pkg.title} was rejected.`,
+            at: booking.updated_at,
+          });
+        }
       }
     }
 
@@ -139,7 +156,7 @@ export async function listNotifications(
       const packageById = new Map(myPackages.map((p) => [p.id, p]));
       const { data: bookings } = await supabase
         .from("package_bookings")
-        .select("organizer_id, package_id, created_at")
+        .select("organizer_id, package_id, status, awaiting_response_from, created_at, updated_at")
         .in("package_id", myPackages.map((p) => p.id));
 
       if (bookings && bookings.length > 0) {
@@ -155,6 +172,13 @@ export async function listNotifications(
             message: `${nameById.get(booking.organizer_id) ?? "An organizer"} booked your ${pkg.title}.`,
             at: booking.created_at,
           });
+          if (booking.status === "dealing" && booking.awaiting_response_from === "talent") {
+            raw.push({
+              kind: "counter_offer_received",
+              message: `${nameById.get(booking.organizer_id) ?? "An organizer"} sent a new offer for ${pkg.title}.`,
+              at: booking.updated_at,
+            });
+          }
         }
       }
     }

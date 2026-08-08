@@ -307,6 +307,7 @@ export type NotificationKind =
   | "application_status"
   | "booking_received"
   | "booking_status"
+  | "counter_offer_received"
   | "kyc_status"
   | "quotation_received"
   | "quotation_responded";

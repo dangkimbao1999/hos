@@ -102,6 +102,20 @@ describe("NotificationButton — clicking a notification navigates to what it's 
     expect(screen.getByRole("link", { name: /test/i })).toHaveAttribute("href", "/organizer/account/orders");
   });
 
+  it("links counter_offer_received to Orders, for either role", async () => {
+    markNotificationsReadResult = { success: true as const };
+    render(
+      <NotificationButton
+        role="talent"
+        notifications={[
+          { id: "n1", kind: "counter_offer_received", message: "Test", time: "1h ago", unread: false },
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /notifications/i }));
+    expect(screen.getByRole("link", { name: /test/i })).toHaveAttribute("href", "/talent/account/orders");
+  });
+
   it("links quotation_received (talent) to Quotations", async () => {
     markNotificationsReadResult = { success: true as const };
     render(
