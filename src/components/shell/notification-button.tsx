@@ -12,6 +12,7 @@ import type { Role } from "@/lib/nav-items";
 const PERSON_KINDS = new Set([
   "application_received",
   "application_status",
+  "booking_marked_complete_by_talent",
   "booking_received",
   "counter_offer_received",
   "quotation_received",
@@ -29,6 +30,8 @@ function hrefForNotification(kind: NotificationKind, role: Role): string {
     case "booking_received":
       return `${base}/orders`;
     case "booking_status":
+      return `${base}/orders`;
+    case "booking_marked_complete_by_talent":
       return `${base}/orders`;
     case "counter_offer_received":
       return `${base}/orders`;

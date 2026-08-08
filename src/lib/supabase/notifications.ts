@@ -85,7 +85,7 @@ export async function listNotifications(
 
     const { data: bookings } = await supabase
       .from("package_bookings")
-      .select("package_id, status, awaiting_response_from, updated_at")
+      .select("package_id, status, awaiting_response_from, talent_marked_complete_at, updated_at")
       .eq("organizer_id", profileId)
       .in("status", ["confirmed", "cancelled", "dealing"]);
 
@@ -122,6 +122,13 @@ export async function listNotifications(
                 ? `Your booking for ${pkg.title} was confirmed.`
                 : `Your booking for ${pkg.title} was rejected.`,
             at: booking.updated_at,
+          });
+        }
+        if (booking.talent_marked_complete_at) {
+          raw.push({
+            kind: "booking_marked_complete_by_talent",
+            message: `${talentNameById.get(pkg.talent_id) ?? "The talent"} marked ${pkg.title} as complete — confirm to finish this booking.`,
+            at: booking.talent_marked_complete_at,
           });
         }
       }

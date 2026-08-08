@@ -14,6 +14,11 @@ interface FakeBooking {
   talent_offer_vnd: number;
   organizer_offer_vnd: number;
   talent_id: string;
+  payment_method?: "Prepaid" | "Postpaid";
+  status?: string;
+  payment_status?: "pending" | "complete";
+  booked_date?: string | null;
+  booked_end_time?: string | null;
 }
 
 function makeSupabase(options: {
@@ -78,6 +83,11 @@ function makeSupabase(options: {
                       awaiting_response_from: options.booking.awaiting_response_from,
                       talent_offer_vnd: options.booking.talent_offer_vnd,
                       organizer_offer_vnd: options.booking.organizer_offer_vnd,
+                      payment_method: options.booking.payment_method ?? "Prepaid",
+                      status: options.booking.status ?? "confirmed",
+                      payment_status: options.booking.payment_status ?? "pending",
+                      booked_date: options.booking.booked_date ?? "2020-01-01",
+                      booked_end_time: options.booking.booked_end_time ?? "00:00:00",
                       package: { talent_id: options.booking.talent_id },
                     }
                   : null,
@@ -109,9 +119,12 @@ import {
   confirmBookingOffer,
   createPackage,
   deletePackage,
+  markBookingPaid,
+  organizerMarkComplete,
   rejectBooking,
   removeFromCart,
   submitCounterOffer,
+  talentMarkComplete,
   updatePackage,
 } from "@/lib/supabase/package-actions";
 
@@ -247,7 +260,24 @@ describe("confirmBookingOffer", () => {
       status: "confirmed",
       price_vnd: 4_500_000,
       awaiting_response_from: null,
+      payment_status: "pending",
     });
+  });
+
+  it("marks Postpaid bookings as already paid on confirm, since payment happens after the event", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "talent",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 4_500_000,
+        payment_method: "Postpaid",
+      },
+    });
+    await confirmBookingOffer("booking-1");
+    expect(supabaseMock.__updated.package_bookings).toMatchObject({ payment_status: "complete" });
   });
 
   it("accepts the talent's offer when it's the organizer's turn", async () => {
@@ -292,6 +322,232 @@ describe("confirmBookingOffer", () => {
       },
     });
     expect(await confirmBookingOffer("booking-1")).toEqual({ error: "You are not part of this booking." });
+  });
+});
+
+describe("markBookingPaid", () => {
+  it("marks a Prepaid confirmed booking as paid when the organizer confirms", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        payment_method: "Prepaid",
+        status: "confirmed",
+        payment_status: "pending",
+      },
+    });
+    const result = await markBookingPaid("booking-1");
+    expect(result).toEqual({ success: true });
+    expect(supabaseMock.__updated.package_bookings).toEqual({ payment_status: "complete" });
+  });
+
+  it("rejects when the caller isn't the organizer", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        payment_method: "Prepaid",
+        status: "confirmed",
+        payment_status: "pending",
+      },
+    });
+    expect(await markBookingPaid("booking-1")).toEqual({
+      error: "Only the organizer can confirm payment for this booking.",
+    });
+  });
+
+  it("rejects when the booking isn't confirmed yet", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "talent",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        payment_method: "Prepaid",
+        status: "pending",
+        payment_status: "pending",
+      },
+    });
+    expect(await markBookingPaid("booking-1")).toEqual({ error: "This booking isn't confirmed yet." });
+  });
+
+  it("rejects Postpaid bookings, which don't need prepayment", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        payment_method: "Postpaid",
+        status: "confirmed",
+        payment_status: "complete",
+      },
+    });
+    expect(await markBookingPaid("booking-1")).toEqual({ error: "This booking doesn't require prepayment." });
+  });
+});
+
+describe("talentMarkComplete", () => {
+  it("records a timestamp when the talent marks a confirmed, past-end-time booking complete", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        status: "confirmed",
+        booked_date: "2020-01-01",
+        booked_end_time: "00:00:00",
+      },
+    });
+    const result = await talentMarkComplete("booking-1");
+    expect(result).toEqual({ success: true });
+    expect(supabaseMock.__updated.package_bookings).toHaveProperty("talent_marked_complete_at");
+  });
+
+  it("rejects when the caller isn't the talent", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        status: "confirmed",
+        booked_date: "2020-01-01",
+        booked_end_time: "00:00:00",
+      },
+    });
+    expect(await talentMarkComplete("booking-1")).toEqual({
+      error: "Only the talent can mark this booking complete.",
+    });
+  });
+
+  it("rejects when the booking isn't confirmed", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: "talent",
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        status: "pending",
+        booked_date: "2020-01-01",
+        booked_end_time: "00:00:00",
+      },
+    });
+    expect(await talentMarkComplete("booking-1")).toEqual({ error: "This booking isn't confirmed yet." });
+  });
+
+  it("rejects before the booking's end time has passed", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        status: "confirmed",
+        booked_date: "2999-01-01",
+        booked_end_time: "00:00:00",
+      },
+    });
+    expect(await talentMarkComplete("booking-1")).toEqual({
+      error: "This booking can't be marked complete until its end time has passed.",
+    });
+  });
+});
+
+describe("organizerMarkComplete", () => {
+  it("marks a confirmed, past-end-time booking as completed", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        status: "confirmed",
+        booked_date: "2020-01-01",
+        booked_end_time: "00:00:00",
+      },
+    });
+    const result = await organizerMarkComplete("booking-1");
+    expect(result).toEqual({ success: true });
+    expect(supabaseMock.__updated.package_bookings).toEqual({ status: "completed" });
+  });
+
+  it("rejects when the caller isn't the organizer", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: TALENT_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        status: "confirmed",
+        booked_date: "2020-01-01",
+        booked_end_time: "00:00:00",
+      },
+    });
+    expect(await organizerMarkComplete("booking-1")).toEqual({
+      error: "Only the organizer can mark this booking completed.",
+    });
+  });
+
+  it("rejects when the booking isn't confirmed", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        status: "dealing",
+        booked_date: "2020-01-01",
+        booked_end_time: "00:00:00",
+      },
+    });
+    expect(await organizerMarkComplete("booking-1")).toEqual({ error: "This booking isn't confirmed yet." });
+  });
+
+  it("rejects before the booking's end time has passed", async () => {
+    supabaseMock = makeSupabase({
+      user: { id: ORGANIZER_ID },
+      booking: {
+        organizer_id: ORGANIZER_ID,
+        talent_id: TALENT_ID,
+        awaiting_response_from: null,
+        talent_offer_vnd: 5_000_000,
+        organizer_offer_vnd: 5_000_000,
+        status: "confirmed",
+        booked_date: "2999-01-01",
+        booked_end_time: "00:00:00",
+      },
+    });
+    expect(await organizerMarkComplete("booking-1")).toEqual({
+      error: "This booking can't be marked completed until its end time has passed.",
+    });
   });
 });
 

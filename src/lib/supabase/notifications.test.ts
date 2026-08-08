@@ -141,4 +141,45 @@ describe("listNotifications", () => {
       })
     );
   });
+
+  it("notifies the organizer when the talent marks a confirmed booking complete", async () => {
+    eventApplications = [];
+    packagesData = [{ id: "pkg-1", title: "Acoustic Set", talent_id: "talent-1" }];
+    bookingsData = [
+      {
+        package_id: "pkg-1",
+        status: "confirmed",
+        awaiting_response_from: null,
+        talent_marked_complete_at: "2026-08-08T10:00:00Z",
+        updated_at: "2026-08-08T00:00:00Z",
+      },
+    ];
+    profilesData = [{ id: "talent-1", full_name: "DJ Nova" }];
+
+    const items = await listNotifications("org-1", "organizer", null);
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        kind: "booking_marked_complete_by_talent",
+        message: "DJ Nova marked Acoustic Set as complete — confirm to finish this booking.",
+      })
+    );
+  });
+
+  it("does not notify the organizer about talent-marked-complete when it hasn't happened", async () => {
+    eventApplications = [];
+    packagesData = [{ id: "pkg-1", title: "Acoustic Set", talent_id: "talent-1" }];
+    bookingsData = [
+      {
+        package_id: "pkg-1",
+        status: "confirmed",
+        awaiting_response_from: null,
+        talent_marked_complete_at: null,
+        updated_at: "2026-08-08T00:00:00Z",
+      },
+    ];
+    profilesData = [{ id: "talent-1", full_name: "DJ Nova" }];
+
+    const items = await listNotifications("org-1", "organizer", null);
+    expect(items.map((i) => i.kind)).not.toContain("booking_marked_complete_by_talent");
+  });
 });
