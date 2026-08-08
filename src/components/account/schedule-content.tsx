@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { addMonths, getMonthGrid, startOfWeekMonday, toIsoDate } from "@/lib/calendar";
+import { addMonths, getMonthGrid, monthFetchWindow, startOfWeekMonday, toIsoDate } from "@/lib/calendar";
 import { cn } from "@/lib/utils";
+import { fetchScheduleEntries } from "@/lib/supabase/schedule-actions";
 import type { ScheduleEntry } from "@/lib/supabase/schedule";
 
 const FIRST_HOUR = 8;
@@ -26,11 +27,37 @@ export function formatHour(hour: number) {
   return minutes === 0 ? `${displayHour}${period}` : `${displayHour}:${String(minutes).padStart(2, "0")}${period}`;
 }
 
-export function ScheduleContent({ entries }: { entries: ScheduleEntry[] }) {
-  const today = new Date();
-  const [selectedDate, setSelectedDate] = useState(today);
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+export function ScheduleContent({
+  initialEntries,
+  initialToday,
+}: {
+  initialEntries: ScheduleEntry[];
+  initialToday: { year: number; month: number; day: number };
+}) {
+  const [entries, setEntries] = useState(initialEntries);
+  const [selectedDate, setSelectedDate] = useState(
+    () => new Date(initialToday.year, initialToday.month, initialToday.day)
+  );
+  const [viewYear, setViewYear] = useState(initialToday.year);
+  const [viewMonth, setViewMonth] = useState(initialToday.month);
+
+  // initialEntries only ever seeds the very first render — every viewYear/viewMonth
+  // change after that (prev/next month, or Today jumping to a different month) goes
+  // through the fetch effect below, which always requests the freshly-computed window.
+  const requestIdRef = useRef(0);
+  const isFirstRunRef = useRef(true);
+  useEffect(() => {
+    if (isFirstRunRef.current) {
+      isFirstRunRef.current = false;
+      return;
+    }
+    const requestId = ++requestIdRef.current;
+    const { start, end } = monthFetchWindow(viewYear, viewMonth);
+    fetchScheduleEntries(start, end).then((result) => {
+      if (requestId !== requestIdRef.current) return;
+      setEntries(result);
+    });
+  }, [viewYear, viewMonth]);
 
   const monday = startOfWeekMonday(selectedDate);
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -52,6 +79,11 @@ export function ScheduleContent({ entries }: { entries: ScheduleEntry[] }) {
 
   const { leadingBlanks, days: monthDays } = getMonthGrid(viewYear, viewMonth);
 
+  // `entries` covers the whole padded month window (past days included, for
+  // whichever week is on screen) — the sidebar's own "Upcoming" label needs
+  // just the from-today-forward slice of that same window.
+  const upcomingEntries = entries.filter((e) => e.date >= toIsoDate(new Date()));
+
   function goToPrevMonth() {
     const next = addMonths(viewYear, viewMonth, -1);
     setViewYear(next.year);
@@ -65,6 +97,9 @@ export function ScheduleContent({ entries }: { entries: ScheduleEntry[] }) {
   }
 
   function goToToday() {
+    // Computed fresh on click (not from initialToday) so a tab left open across
+    // midnight still jumps to the real current date, not the day it was loaded.
+    const today = new Date();
     setSelectedDate(today);
     setViewYear(today.getFullYear());
     setViewMonth(today.getMonth());
@@ -225,11 +260,11 @@ export function ScheduleContent({ entries }: { entries: ScheduleEntry[] }) {
 
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold text-foreground">Upcoming Events</h3>
-          {entries.length === 0 ? (
+          {upcomingEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground">No confirmed engagements yet.</p>
           ) : (
             <div className="flex flex-col gap-2">
-              {entries.map((entry, i) => (
+              {upcomingEntries.map((entry, i) => (
                 <div key={i} className="flex items-center justify-between rounded-md bg-white/5 p-3">
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-foreground">{entry.title}</span>
