@@ -33,7 +33,6 @@ function makePackage(overrides: Partial<PackageRow & { bookingCount: number }> =
     title: "Acoustic Set",
     residency: null,
     city_id: "city-hcm",
-    address: null,
     working_method: null,
     skill_tags: [],
     repeat_on: false,

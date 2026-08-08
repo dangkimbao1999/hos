@@ -131,13 +131,17 @@ export function OrderDetailContent({ role, booking }: { role: Role; booking: Boo
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-bold text-foreground">Booking Detail</h2>
           <span className="text-xl font-bold text-foreground">{booking.package_title}</span>
-          <span className="text-sm text-muted-foreground">{booking.package_city_name}</span>
+          {booking.venue_city_name && (
+            <span className="text-sm text-muted-foreground">{booking.venue_city_name}</span>
+          )}
         </div>
 
-        {booking.package_address && (
+        {booking.venue_address && (
           <div className="flex flex-col gap-1 border-t border-border pt-4">
-            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Location</span>
-            <span className="text-sm text-foreground">{booking.package_address}</span>
+            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Perform Address
+            </span>
+            <span className="text-sm text-foreground">{booking.venue_address}</span>
           </div>
         )}
 

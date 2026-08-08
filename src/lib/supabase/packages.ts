@@ -287,7 +287,7 @@ export async function getBookingDetail(bookingId: string): Promise<BookingDetail
 
   const { data: pkg } = await supabase
     .from("packages")
-    .select("title, description, address, working_method, skill_tags, talent_id, city_id, start_time, end_time")
+    .select("title, description, working_method, skill_tags, talent_id, start_time, end_time")
     .eq("id", booking.package_id)
     .single();
   if (!pkg) return null;
@@ -295,7 +295,9 @@ export async function getBookingDetail(bookingId: string): Promise<BookingDetail
   const [{ data: organizer }, { data: talent }, cityNames] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", booking.organizer_id).single(),
     supabase.from("profiles").select("full_name").eq("id", pkg.talent_id).single(),
-    mapLookupNames(supabase, "cities", [pkg.city_id]),
+    // The perform location is the organizer's own input on this booking, not
+    // the package's (base) city — see order-negotiation_and_package_details.
+    mapLookupNames(supabase, "cities", [booking.city_id]),
   ]);
 
   return {
@@ -304,12 +306,12 @@ export async function getBookingDetail(bookingId: string): Promise<BookingDetail
     talent_name: talent?.full_name ?? "",
     package_title: pkg.title,
     package_description: pkg.description,
-    package_address: pkg.address,
     package_working_method: pkg.working_method,
     package_skill_tags: pkg.skill_tags,
-    package_city_name: cityNames.get(pkg.city_id) ?? "",
     package_start_time: pkg.start_time,
     package_end_time: pkg.end_time,
+    venue_city_name: booking.city_id ? (cityNames.get(booking.city_id) ?? null) : null,
+    venue_address: booking.address,
   };
 }
 

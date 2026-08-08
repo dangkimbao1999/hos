@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { addToCart } from "@/lib/supabase/package-actions";
-import type { PackageRow, PackageWithLookupNames } from "@/lib/supabase/types";
+import type { LookupOption, PackageRow, PackageWithLookupNames } from "@/lib/supabase/types";
 import { runAction } from "@/lib/toast-action";
 
 function formatVnd(amount: number) {
@@ -29,9 +29,11 @@ function allowedWeekday(pkg: PackageRow, dateStr: string): boolean {
 export function BookingPanel({
   talentName,
   packages,
+  cities,
 }: {
   talentName: string;
   packages: PackageWithLookupNames[];
+  cities: LookupOption[];
 }) {
   const router = useRouter();
   const [selectedPackage, setSelectedPackage] = useState(0);
@@ -40,6 +42,8 @@ export function BookingPanel({
   const [error, setError] = useState<string | undefined>();
   const [bookedDate, setBookedDate] = useState("");
   const [bookedTime, setBookedTime] = useState("");
+  const [cityId, setCityId] = useState("");
+  const [address, setAddress] = useState("");
 
   const visiblePackages = showAll ? packages : packages.slice(0, 3);
   const hasPackages = packages.length > 0;
@@ -63,6 +67,14 @@ export function BookingPanel({
       setError(`This package is only available on: ${selectedPkg.repeat_days?.join(", ")}.`);
       return;
     }
+    if (!cityId) {
+      setError("Select the perform city.");
+      return;
+    }
+    if (!address.trim()) {
+      setError("Enter the perform address.");
+      return;
+    }
     setError(undefined);
     setPending(true);
     const formData = new FormData();
@@ -70,6 +82,8 @@ export function BookingPanel({
     formData.set("priceVnd", String(selectedPkg.price_min_vnd));
     formData.set("bookedDate", bookedDate);
     formData.set("bookedTime", bookedTime);
+    formData.set("cityId", cityId);
+    formData.set("address", address);
     const result = await runAction(addToCart(formData), { success: "Added to cart." });
     setPending(false);
     if ("error" in result) {
@@ -164,6 +178,36 @@ export function BookingPanel({
                   Available on: {selectedPkg.repeat_days.join(", ")}
                 </p>
               )}
+            </div>
+          )}
+
+          {selectedPkg && (
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm text-muted-foreground">
+                Perform Location<span className="text-primary">*</span>
+              </Label>
+              <select
+                value={cityId}
+                onChange={(e) => setCityId(e.target.value)}
+                aria-label="Perform city"
+                className="h-11 rounded-[6px] border border-input bg-transparent px-3 text-sm text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <option value="" disabled>
+                  Select a city
+                </option>
+                {cities.map((city) => (
+                  <option key={city.id} value={city.id} className="bg-background text-foreground">
+                    {city.name}
+                  </option>
+                ))}
+              </select>
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Perform address"
+                aria-label="Perform address"
+                className="h-11 rounded-[6px]"
+              />
             </div>
           )}
 

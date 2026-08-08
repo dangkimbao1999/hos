@@ -10,7 +10,12 @@ import { RequestQuoteDialog } from "@/components/talent-detail/request-quote-dia
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { TalentReviewSummary } from "@/lib/supabase/reviews";
-import type { PackageWithLookupNames, PackageWithTalent, ProfileWithLookupNames } from "@/lib/supabase/types";
+import type {
+  LookupOption,
+  PackageWithLookupNames,
+  PackageWithTalent,
+  ProfileWithLookupNames,
+} from "@/lib/supabase/types";
 
 const TABS = ["Overview", "Schedules", "Reviews", "About Talent"] as const;
 type Tab = (typeof TABS)[number];
@@ -26,11 +31,13 @@ export function TalentDetailContent({
   packages,
   relatedPackages,
   reviewSummary,
+  cities,
 }: {
   talent: ProfileWithLookupNames;
   packages: PackageWithLookupNames[];
   relatedPackages: PackageWithTalent[];
   reviewSummary: TalentReviewSummary;
+  cities: LookupOption[];
 }) {
   const [tab, setTab] = useState<Tab>("Overview");
   // Tagline/category have no real schema yet — kept as generic mock flavor
@@ -332,8 +339,8 @@ export function TalentDetailContent({
         </div>
 
         <div className="flex h-fit w-[380px] shrink-0 flex-col gap-4">
-          <BookingPanel talentName={talent.full_name} packages={packages} />
-          <RequestQuoteDialog talentId={talent.id} talentName={talent.full_name} />
+          <BookingPanel talentName={talent.full_name} packages={packages} cities={cities} />
+          <RequestQuoteDialog talentId={talent.id} talentName={talent.full_name} cities={cities} />
         </div>
       </div>
     </div>

@@ -244,8 +244,6 @@ export function CreatePackageDialog({
                 />
               </div>
 
-              <Field label="Address" name="address" defaultValue={editingPackage?.address ?? undefined} />
-
               {isAgency ? (
                 <SelectField label="One-time" name="oneTime" options={["One-time", "Repeat"]} />
               ) : (

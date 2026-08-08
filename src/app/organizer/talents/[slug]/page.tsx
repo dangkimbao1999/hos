@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { TalentDetailContent } from "@/components/talent-detail/talent-detail-content";
+import { listCities } from "@/lib/supabase/lookups";
 import {
   getTalentBySlug,
   listPackagesForTalentWithNames,
@@ -16,9 +17,10 @@ export default async function TalentDetailPage({
   const talent = await getTalentBySlug(slug);
   if (!talent) notFound();
 
-  const [packages, reviewSummary] = await Promise.all([
+  const [packages, reviewSummary, cities] = await Promise.all([
     listPackagesForTalentWithNames(talent.id),
     getTalentReviewSummary(talent.id),
+    listCities(),
   ]);
   const relatedPackages = await listRelatedPackagesForTalent(
     talent.id,
@@ -33,6 +35,7 @@ export default async function TalentDetailPage({
       packages={packages}
       relatedPackages={relatedPackages}
       reviewSummary={reviewSummary}
+      cities={cities}
     />
   );
 }

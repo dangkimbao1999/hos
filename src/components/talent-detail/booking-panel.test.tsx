@@ -33,7 +33,6 @@ function makePackage(overrides: Partial<PackageWithLookupNames> = {}): PackageWi
     residency: null,
     city_id: "city-hcm",
     city_name: "Ho Chi Minh City",
-    address: null,
     working_method: null,
     skill_tags: [],
     repeat_on: false,
@@ -54,12 +53,34 @@ function makePackage(overrides: Partial<PackageWithLookupNames> = {}): PackageWi
   };
 }
 
+const CITIES = [{ id: "city-hcm", name: "HCM City" }];
+
 describe("BookingPanel — toasts", () => {
   it("shows a success toast when added to cart", async () => {
-    render(<BookingPanel talentName="Test Talent" packages={[makePackage()]} />);
+    render(<BookingPanel talentName="Test Talent" packages={[makePackage()]} cities={CITIES} />);
     fireEvent.change(screen.getByLabelText("Booking date"), { target: { value: "2026-12-01" } });
+    fireEvent.change(screen.getByLabelText(/perform city/i), { target: { value: "city-hcm" } });
+    fireEvent.change(screen.getByLabelText(/perform address/i), { target: { value: "123 Main St" } });
     fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(toastCalls).toContainEqual({ type: "success", message: "Added to cart." });
+  });
+
+  it("blocks adding to cart without a perform city", async () => {
+    render(<BookingPanel talentName="Test Talent" packages={[makePackage()]} cities={CITIES} />);
+    fireEvent.change(screen.getByLabelText("Booking date"), { target: { value: "2026-12-01" } });
+    fireEvent.change(screen.getByLabelText(/perform address/i), { target: { value: "123 Main St" } });
+    fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
+    expect(screen.getByText("Select the perform city.")).toBeInTheDocument();
+    expect(toastCalls).toEqual([]);
+  });
+
+  it("blocks adding to cart without a perform address", async () => {
+    render(<BookingPanel talentName="Test Talent" packages={[makePackage()]} cities={CITIES} />);
+    fireEvent.change(screen.getByLabelText("Booking date"), { target: { value: "2026-12-01" } });
+    fireEvent.change(screen.getByLabelText(/perform city/i), { target: { value: "city-hcm" } });
+    fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
+    expect(screen.getByText("Enter the perform address.")).toBeInTheDocument();
+    expect(toastCalls).toEqual([]);
   });
 });

@@ -20,7 +20,6 @@ export async function createPackage(
   const title = String(formData.get("title") ?? "");
   const residency = String(formData.get("residency") ?? "") || null;
   const cityId = String(formData.get("cityId") ?? "");
-  const address = String(formData.get("address") ?? "") || null;
   const workingMethod = String(formData.get("workingMethod") ?? "") || null;
   const skillTagsRaw = String(formData.get("skillTags") ?? "");
   const skillTags = skillTagsRaw
@@ -46,7 +45,6 @@ export async function createPackage(
     title,
     residency,
     city_id: cityId,
-    address,
     working_method: workingMethod,
     skill_tags: skillTags,
     repeat_on: repeatOn,
@@ -83,7 +81,6 @@ export async function updatePackage(
   const title = String(formData.get("title") ?? "");
   const residency = String(formData.get("residency") ?? "") || null;
   const cityId = String(formData.get("cityId") ?? "");
-  const address = String(formData.get("address") ?? "") || null;
   const workingMethod = String(formData.get("workingMethod") ?? "") || null;
   const skillTagsRaw = String(formData.get("skillTags") ?? "");
   const skillTags = skillTagsRaw
@@ -110,7 +107,6 @@ export async function updatePackage(
       title,
       residency,
       city_id: cityId,
-      address,
       working_method: workingMethod,
       skill_tags: skillTags,
       repeat_on: repeatOn,
@@ -170,6 +166,10 @@ export async function addToCart(
   const priceVnd = Number(formData.get("priceVnd") ?? 0);
   const bookedDate = String(formData.get("bookedDate") ?? "") || null;
   const bookedTime = String(formData.get("bookedTime") ?? "") || null;
+  const cityId = String(formData.get("cityId") ?? "") || null;
+  const address = String(formData.get("address") ?? "").trim() || null;
+  if (!cityId) return { error: "Select the perform city." };
+  if (!address) return { error: "Enter the perform address." };
 
   const { error } = await supabase.from("cart_items").insert({
     organizer_id: user.id,
@@ -177,6 +177,8 @@ export async function addToCart(
     price_vnd: priceVnd,
     booked_date: bookedDate,
     booked_time: bookedTime,
+    city_id: cityId,
+    address,
   });
 
   if (error) return { error: error.message };
@@ -238,6 +240,8 @@ export async function checkoutCart(
       awaiting_response_from: "talent",
       booked_date: item.booked_date,
       booked_time: item.booked_time,
+      city_id: item.city_id,
+      address: item.address,
       payment_method: paymentMethod,
     }))
   );

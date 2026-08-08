@@ -19,12 +19,16 @@ export async function requestQuotation(
   const eventName = String(formData.get("eventName") ?? "").trim();
   const eventDate = String(formData.get("eventDate") ?? "") || null;
   const venue = String(formData.get("venue") ?? "").trim() || null;
+  const cityId = String(formData.get("cityId") ?? "") || null;
+  const address = String(formData.get("address") ?? "").trim() || null;
   const description = String(formData.get("description") ?? "").trim() || null;
   const budgetMinVnd = Number(formData.get("budgetMin") ?? 0) || null;
   const budgetMaxVnd = Number(formData.get("budgetMax") ?? 0) || null;
 
   if (!talentId) return { error: "Missing talent." };
   if (!eventName) return { error: "Event name is required." };
+  if (!cityId) return { error: "Select the perform city." };
+  if (!address) return { error: "Enter the perform address." };
 
   const { error } = await supabase.from("quotations").insert({
     organizer_id: user.id,
@@ -32,6 +36,8 @@ export async function requestQuotation(
     event_name: eventName,
     event_date: eventDate,
     venue,
+    city_id: cityId,
+    address,
     description,
     budget_min_vnd: budgetMinVnd,
     budget_max_vnd: budgetMaxVnd,

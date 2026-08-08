@@ -23,7 +23,6 @@ function makePackage(overrides: Partial<PackageWithTalent> = {}): PackageWithTal
     title: "My Package",
     residency: null,
     city_id: "city-hcm",
-    address: null,
     working_method: null,
     skill_tags: [],
     repeat_on: true,

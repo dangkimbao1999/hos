@@ -155,7 +155,6 @@ export interface PackageRow {
   title: string;
   residency: string | null;
   city_id: string;
-  address: string | null;
   working_method: string | null;
   skill_tags: string[];
   repeat_on: boolean;
@@ -201,6 +200,9 @@ export interface CartItemRow {
   price_vnd: number;
   booked_date: string | null;
   booked_time: string | null;
+  /** Where the performance actually happens — distinct from the package's own (base) city. */
+  city_id: string | null;
+  address: string | null;
   created_at: string;
 }
 
@@ -225,6 +227,9 @@ export interface PackageBookingRow {
   awaiting_response_from: BookingParty | null;
   booked_date: string | null;
   booked_time: string | null;
+  /** Where the performance actually happens — distinct from the package's own (base) city. */
+  city_id: string | null;
+  address: string | null;
   payment_method: PaymentMethod;
   status: BookingStatus;
   created_at: string;
@@ -244,12 +249,13 @@ export interface BookingDetail extends PackageBookingRow {
   talent_name: string;
   package_title: string;
   package_description: string | null;
-  package_address: string | null;
   package_working_method: string | null;
   package_skill_tags: string[];
-  package_city_name: string;
   package_start_time: string;
   package_end_time: string;
+  /** The perform location entered by the organizer for this specific booking — not the package's own city. */
+  venue_city_name: string | null;
+  venue_address: string | null;
 }
 
 export type QuotationStatus = "pending" | "quoted" | "accepted" | "rejected" | "declined";
@@ -261,6 +267,8 @@ export interface QuotationRow {
   event_name: string;
   event_date: string | null;
   venue: string | null;
+  city_id: string | null;
+  address: string | null;
   description: string | null;
   budget_min_vnd: number | null;
   budget_max_vnd: number | null;
@@ -271,10 +279,11 @@ export interface QuotationRow {
   updated_at: string;
 }
 
-/** A quotation joined with both parties' names — for each side's Quotations tab. */
+/** A quotation joined with both parties' names and the resolved perform-city name — for each side's Quotations tab. */
 export interface QuotationWithNames extends QuotationRow {
   organizer_name: string;
   talent_name: string;
+  city_name: string | null;
 }
 
 export interface ReviewRow {

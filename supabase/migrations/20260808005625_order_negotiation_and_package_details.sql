@@ -2,17 +2,23 @@
 -- state (separate talent/organizer asking prices, whose turn it is to
 -- respond) instead of the single price_vnd + pending/confirmed/cancelled it
 -- has today. Packages also need the extra display fields the Order Detail
--- panel shows (address, working method, skill requirement tags).
+-- panel shows (working method, skill requirement tags) -- NOT address: a
+-- package's city is just "where the talent is based," set once by the
+-- talent. The actual perform address is specific to a given event, entered
+-- by the organizer per request (quotation or package booking) -- see the
+-- city_id/address columns added to quotations/cart_items/package_bookings
+-- below.
 
 alter table public.packages
-  add column address text,
   add column working_method text,
   add column skill_tags text[] not null default '{}';
 
 alter table public.package_bookings
   add column talent_offer_vnd bigint,
   add column organizer_offer_vnd bigint,
-  add column awaiting_response_from text check (awaiting_response_from in ('talent', 'organizer'));
+  add column awaiting_response_from text check (awaiting_response_from in ('talent', 'organizer')),
+  add column city_id uuid references public.cities (id),
+  add column address text;
 
 -- Backfill: every existing booking's price_vnd was the organizer's opening
 -- offer at checkout, mirrored as the starting point for both sides — the
@@ -59,3 +65,22 @@ create policy "The organizer can update their bookings"
   to authenticated
   using (organizer_id = (select auth.uid()))
   with check (organizer_id = (select auth.uid()));
+
+create index package_bookings_city_id_idx on public.package_bookings (city_id);
+
+-- cart_items carries the same perform city/address so checkout can copy it
+-- straight onto the package_booking it creates.
+alter table public.cart_items
+  add column city_id uuid references public.cities (id),
+  add column address text;
+
+create index cart_items_city_id_idx on public.cart_items (city_id);
+
+-- Quotations: the organizer already free-typed a "venue" name -- city/address
+-- are the actual required perform-location fields; venue stays optional
+-- (e.g. a venue's proper name, distinct from its street address).
+alter table public.quotations
+  add column city_id uuid references public.cities (id),
+  add column address text;
+
+create index quotations_city_id_idx on public.quotations (city_id);

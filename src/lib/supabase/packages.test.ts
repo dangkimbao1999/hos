@@ -30,6 +30,8 @@ mock.module("@/lib/supabase/server", () => ({
           awaiting_response_from: "talent",
           booked_date: "2026-12-01",
           booked_time: "20:00",
+          city_id: "city-hcm",
+          address: "123 Main St",
           payment_method: "Prepaid",
           status: "pending",
           created_at: "2026-08-01T00:00:00Z",
@@ -40,11 +42,9 @@ mock.module("@/lib/supabase/server", () => ({
         return makeChain({
           title: "Acoustic Set",
           description: "A chill set.",
-          address: "123 Main St",
           working_method: "Freelance",
           skill_tags: ["Guitar", "Vocals"],
           talent_id: "talent-1",
-          city_id: "city-hcm",
           start_time: "20:00:00",
           end_time: "22:00:00",
         });
@@ -125,7 +125,6 @@ function makePackageRow(overrides: Partial<PackageRow> = {}): PackageRow {
     title: "My Package",
     residency: null,
     city_id: CITY_HCM.id,
-    address: null,
     working_method: null,
     skill_tags: [],
     repeat_on: true,
@@ -247,12 +246,12 @@ describe("getBookingDetail", () => {
       talent_name: "Test Talent",
       package_title: "Acoustic Set",
       package_description: "A chill set.",
-      package_address: "123 Main St",
       package_working_method: "Freelance",
       package_skill_tags: ["Guitar", "Vocals"],
-      package_city_name: "HCM City",
       package_start_time: "20:00:00",
       package_end_time: "22:00:00",
+      venue_city_name: "HCM City",
+      venue_address: "123 Main St",
     });
   });
 });

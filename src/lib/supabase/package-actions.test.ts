@@ -196,24 +196,22 @@ describe("createPackage / updatePackage", () => {
     });
   });
 
-  it("persists address/working method/skill tags, splitting skill tags on comma", async () => {
+  it("persists working method/skill tags, splitting skill tags on comma", async () => {
     supabaseMock = makeSupabase({ user: { id: USER_ID } });
     const result = await createPackage(
-      packageFormData({ address: "123 Main St", workingMethod: "Freelance", skillTags: "Guitar, Vocals ,  Piano" })
+      packageFormData({ workingMethod: "Freelance", skillTags: "Guitar, Vocals ,  Piano" })
     );
     expect(result).toEqual({ success: true });
     expect(supabaseMock.__inserted.packages).toMatchObject({
-      address: "123 Main St",
       working_method: "Freelance",
       skill_tags: ["Guitar", "Vocals", "Piano"],
     });
   });
 
-  it("stores null address/working method and an empty skill_tags array when omitted", async () => {
+  it("stores null working method and an empty skill_tags array when omitted", async () => {
     supabaseMock = makeSupabase({ user: { id: USER_ID } });
     await createPackage(packageFormData());
     expect(supabaseMock.__inserted.packages).toMatchObject({
-      address: null,
       working_method: null,
       skill_tags: [],
     });
@@ -379,15 +377,31 @@ describe("rejectBooking", () => {
 });
 
 describe("addToCart", () => {
-  it("revalidates the organizer layout so the cart badge/dropdown refresh on the next navigation", async () => {
-    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+  function cartFormData(overrides: Record<string, string> = {}): FormData {
     const formData = new FormData();
     formData.set("packageId", "pkg-1");
     formData.set("priceVnd", "1000000");
+    formData.set("cityId", "city-hcm");
+    formData.set("address", "123 Main St");
+    for (const [key, value] of Object.entries(overrides)) formData.set(key, value);
+    return formData;
+  }
 
-    const result = await addToCart(formData);
+  it("revalidates the organizer layout so the cart badge/dropdown refresh on the next navigation", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    const result = await addToCart(cartFormData());
 
     expect(result).toEqual({ success: true });
     expect(revalidatePath).toHaveBeenCalledWith("/organizer", "layout");
+  });
+
+  it("requires a perform city", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    expect(await addToCart(cartFormData({ cityId: "" }))).toEqual({ error: "Select the perform city." });
+  });
+
+  it("requires a perform address", async () => {
+    supabaseMock = makeSupabase({ user: { id: USER_ID } });
+    expect(await addToCart(cartFormData({ address: "" }))).toEqual({ error: "Enter the perform address." });
   });
 });

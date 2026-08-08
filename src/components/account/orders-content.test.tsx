@@ -18,6 +18,8 @@ function makeBooking(overrides: Partial<BookingWithNames> = {}): BookingWithName
     price_vnd: 5_000_000,
     talent_offer_vnd: 5_000_000,
     organizer_offer_vnd: 5_000_000,
+    city_id: null,
+    address: null,
     awaiting_response_from: "talent",
     booked_date: "2026-12-01",
     booked_time: "20:00",
