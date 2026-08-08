@@ -20,3 +20,21 @@ export function getMonthGrid(year: number, month: number): { leadingBlanks: numb
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   return { leadingBlanks, days: Array.from({ length: daysInMonth }, (_, i) => i + 1) };
 }
+
+/** Today's local year/month/day, as plain numbers — safe to pass across a server/client boundary without timezone-shift risk (unlike an ISO string re-parsed via `new Date(str)`, which reads as UTC midnight). */
+export function todayParts(): { year: number; month: number; day: number } {
+  const d = new Date();
+  return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() };
+}
+
+/**
+ * The date range to fetch schedule entries for when browsing a given month:
+ * the month itself, padded 6 days on each side — the most a Mon-Sun week can
+ * spill across a month boundary — so every week selectable from that month's
+ * mini-calendar is fully covered by one fetch.
+ */
+export function monthFetchWindow(year: number, month: number): { start: string; end: string } {
+  const start = new Date(year, month, 1 - 6);
+  const end = new Date(year, month + 1, 0 + 6);
+  return { start: toIsoDate(start), end: toIsoDate(end) };
+}

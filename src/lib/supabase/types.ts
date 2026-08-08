@@ -139,6 +139,24 @@ export interface EventListingSummary {
   photo_urls: string[];
 }
 
+export type EventDiscoverSort = "newest" | "price_asc" | "price_desc";
+
+/** The agency/talent Events Discover grid's current filter/sort/search selection — mirrors search_event_listings()'s params. */
+export interface EventDiscoverFilters {
+  category: string | null;
+  dateStart: string | null;
+  dateEnd: string | null;
+  search: string | null;
+  sort: EventDiscoverSort;
+}
+
+/** Keyset pagination cursor for search_event_listings() — the last-loaded row's sort key + id. */
+export interface EventDiscoverCursor {
+  createdAt: string;
+  budgetMin: number;
+  id: string;
+}
+
 /** Full event detail: the event row, its slots (with resolved category name), and the organizer's profile. */
 export interface EventWithSlots extends EventRow {
   slots: (EventSlotRow & { category_name: string })[];
@@ -204,6 +222,29 @@ export interface PackageWithTalent extends PackageRow {
   category_name: string;
   subcategory_name: string | null;
   city_name: string;
+}
+
+export type DiscoverSort = "newest" | "price_asc" | "price_desc";
+
+/** The organizer Discover grid's current filter/sort/search selection — mirrors search_discover_packages()'s params. */
+export interface DiscoverFilters {
+  categoryId: string | null;
+  subcategoryId: string | null;
+  cityId: string | null;
+  priceMin: number;
+  priceMax: number;
+  hashtags: string[];
+  dateStart: string | null;
+  dateEnd: string | null;
+  search: string | null;
+  sort: DiscoverSort;
+}
+
+/** Keyset pagination cursor for search_discover_packages() — the last-loaded row's sort key + id. */
+export interface DiscoverCursor {
+  createdAt: string;
+  priceMin: number;
+  id: string;
 }
 
 export interface CartItemRow {

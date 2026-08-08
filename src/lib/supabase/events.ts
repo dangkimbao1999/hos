@@ -1,7 +1,11 @@
 import { mapLookupNames } from "@/lib/supabase/lookups";
+import { ACCOUNT_LIST_PAGE_SIZE } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  CategoryOption,
   EventApplicationWithDetails,
+  EventDiscoverCursor,
+  EventDiscoverFilters,
   EventListingSummary,
   EventWithSlots,
 } from "@/lib/supabase/types";
@@ -60,17 +64,69 @@ export async function listEventListings(limit?: number): Promise<EventListingSum
   return data ?? [];
 }
 
-/** An organizer's own created events, with booked-talent counts — for Account > My Events. */
-export async function listOrganizerEvents(organizerId: string): Promise<EventListingSummary[]> {
+export const EVENT_DISCOVER_PAGE_SIZE = 15;
+
+/**
+ * A page of upcoming events matching the given filters, sorted, and
+ * keyset-paginated via `cursor` (the previous page's last row) instead of
+ * OFFSET — see search_event_listings()'s migration for why.
+ */
+export async function searchEventListings(
+  filters: EventDiscoverFilters,
+  cursor: EventDiscoverCursor | null,
+  limit: number
+): Promise<EventListingSummary[]> {
   const supabase = await createClient();
-
-  const { data } = await supabase
-    .from("event_listing_summary")
-    .select("*")
-    .eq("organizer_id", organizerId)
-    .order("event_date", { ascending: false });
-
+  const { data } = await supabase.rpc("search_event_listings", {
+    p_category: filters.category,
+    p_date_start: filters.dateStart,
+    p_date_end: filters.dateEnd,
+    p_search: filters.search,
+    p_sort: filters.sort,
+    p_cursor_created_at: cursor?.createdAt ?? null,
+    p_cursor_budget_min: cursor?.budgetMin ?? null,
+    p_cursor_id: cursor?.id ?? null,
+    p_limit: limit,
+  });
   return data ?? [];
+}
+
+function firstParam(value: string | string[] | undefined): string | null {
+  return (Array.isArray(value) ? value[0] : value) ?? null;
+}
+
+/** Resolves the sidebar/search URL params (?category=, ?q=) into the RPC's filter shape — shared by the agency and talent Discover pages, which are otherwise identical. */
+export function resolveInitialEventFilters(
+  categories: CategoryOption[],
+  params: { category?: string | string[]; q?: string | string[] }
+): EventDiscoverFilters {
+  const categoryNames = categories.map((c) => c.name);
+  const categoryParam = firstParam(params.category);
+  return {
+    category: categoryParam && categoryNames.includes(categoryParam) ? categoryParam : null,
+    dateStart: null,
+    dateEnd: null,
+    search: firstParam(params.q),
+    sort: "newest",
+  };
+}
+
+/** Offset-paginated list of an organizer's own created events, with booked-talent counts — for Account > My Events. */
+export async function listOrganizerEventsPage(
+  organizerId: string,
+  page: number
+): Promise<{ events: EventListingSummary[]; totalCount: number }> {
+  const supabase = await createClient();
+  const offset = (page - 1) * ACCOUNT_LIST_PAGE_SIZE;
+
+  const { data, count } = await supabase
+    .from("event_listing_summary")
+    .select("*", { count: "exact" })
+    .eq("organizer_id", organizerId)
+    .order("event_date", { ascending: false })
+    .range(offset, offset + ACCOUNT_LIST_PAGE_SIZE - 1);
+
+  return { events: data ?? [], totalCount: count ?? 0 };
 }
 
 /** Every application to any of an organizer's events — for reviewing/accepting on Account > My Events. */

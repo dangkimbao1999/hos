@@ -2,10 +2,12 @@ import Link from "next/link";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 import { AccountShell } from "@/components/account/account-shell";
 import { EventApplicationsPanel } from "@/components/account/event-applications-panel";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatEventDay } from "@/lib/format";
-import { listApplicationsForOrganizer, listOrganizerEvents } from "@/lib/supabase/events";
+import { ACCOUNT_LIST_PAGE_SIZE, parsePageParam, totalPagesFor } from "@/lib/pagination";
+import { listApplicationsForOrganizer, listOrganizerEventsPage } from "@/lib/supabase/events";
 import { listReviewedSourceIds } from "@/lib/supabase/reviews";
 import { getCurrentProfile } from "@/lib/supabase/server";
 import type { EventStatus } from "@/lib/supabase/types";
@@ -29,20 +31,26 @@ function formatBudget(minVnd: number | null, maxVnd: number | null) {
   return format((minVnd ?? maxVnd)!);
 }
 
-export default async function OrganizerEventsPage() {
-  const profile = await getCurrentProfile();
-  const [events, applications, reviewed] = profile
+export default async function OrganizerEventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const [profile, params] = await Promise.all([getCurrentProfile(), searchParams]);
+  const page = parsePageParam(params.page);
+
+  const [{ events, totalCount }, applications, reviewed] = profile
     ? await Promise.all([
-        listOrganizerEvents(profile.id),
+        listOrganizerEventsPage(profile.id, page),
         listApplicationsForOrganizer(profile.id),
         listReviewedSourceIds(profile.id),
       ])
-    : [[], [], { bookingIds: new Set<string>(), applicationIds: new Set<string>() }];
+    : [{ events: [], totalCount: 0 }, [], { bookingIds: new Set<string>(), applicationIds: new Set<string>() }];
 
   return (
     <AccountShell role="organizer">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{events.length} events created</p>
+        <p className="text-sm text-muted-foreground">{totalCount} events created</p>
         <Button asChild className="h-10 rounded-[6px]">
           <Link href="/organizer/create">Create new Event</Link>
         </Button>
@@ -89,6 +97,12 @@ export default async function OrganizerEventsPage() {
           </div>
         ))}
       </div>
+
+      <Pagination
+        currentPage={page}
+        totalPages={totalPagesFor(totalCount, ACCOUNT_LIST_PAGE_SIZE)}
+        makeHref={(p) => `/organizer/account/events?page=${p}`}
+      />
     </AccountShell>
   );
 }

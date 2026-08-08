@@ -9,6 +9,7 @@ import {
   rejectQuotation,
   respondToQuotation,
 } from "@/lib/supabase/quotation-actions";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,17 @@ function formatVnd(n: number) {
   return `${n.toLocaleString("en-US")} VND`;
 }
 
-export function QuotationsContent({ role, quotations }: { role: Role; quotations: QuotationWithNames[] }) {
+export function QuotationsContent({
+  role,
+  quotations,
+  currentPage,
+  totalPages,
+}: {
+  role: Role;
+  quotations: QuotationWithNames[];
+  currentPage?: number;
+  totalPages?: number;
+}) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
@@ -147,6 +158,14 @@ export function QuotationsContent({ role, quotations }: { role: Role; quotations
             </div>
           ))}
         </div>
+      )}
+
+      {currentPage !== undefined && totalPages !== undefined && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          makeHref={(page) => `/${role}/account/quotations?page=${page}`}
+        />
       )}
 
       {respondTarget && (

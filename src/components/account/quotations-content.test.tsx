@@ -59,3 +59,15 @@ describe("QuotationsContent — toasts", () => {
     expect(toastCalls).toContainEqual({ type: "success", message: "Quotation accepted." });
   });
 });
+
+describe("QuotationsContent — pagination", () => {
+  it("renders a pagination control linking to /<role>/account/quotations?page=N when given", () => {
+    render(<QuotationsContent role="talent" quotations={[makeQuotation()]} currentPage={1} totalPages={3} />);
+    expect(screen.getByRole("link", { name: "2" })).toHaveAttribute("href", "/talent/account/quotations?page=2");
+  });
+
+  it("renders no pagination control when currentPage/totalPages are omitted", () => {
+    render(<QuotationsContent role="talent" quotations={[makeQuotation()]} />);
+    expect(screen.queryByRole("navigation", { name: /pagination/i })).not.toBeInTheDocument();
+  });
+});

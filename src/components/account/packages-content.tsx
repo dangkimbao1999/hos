@@ -7,6 +7,7 @@ import { CreatePackageDialog } from "@/components/create-package/create-package-
 import { FilterPill } from "@/components/shell/filter-pill";
 import { PriceRangeFilter, PRICE_FILTER_MAX } from "@/components/shell/price-range-filter";
 import { TimeRangeFilter, type DateRange } from "@/components/shell/time-range-filter";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -45,11 +46,15 @@ export function PackagesContent({
   packages,
   categories,
   cities,
+  currentPage,
+  totalPages,
 }: {
   role: Role;
   packages?: (PackageRow & { bookingCount: number })[];
   categories: CategoryOption[];
   cities: LookupOption[];
+  currentPage?: number;
+  totalPages?: number;
 }) {
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
@@ -192,6 +197,10 @@ export function PackagesContent({
           </TableBody>
         </Table>
       </div>
+
+      {currentPage !== undefined && totalPages !== undefined && (
+        <Pagination currentPage={currentPage} totalPages={totalPages} makeHref={(page) => `/${role}/account/packages?page=${page}`} />
+      )}
     </div>
   );
 }

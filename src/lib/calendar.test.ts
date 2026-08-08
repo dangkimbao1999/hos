@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { addMonths, getMonthGrid, startOfWeekMonday, toIsoDate } from "@/lib/calendar";
+import { addMonths, getMonthGrid, monthFetchWindow, startOfWeekMonday, toIsoDate } from "@/lib/calendar";
 
 describe("toIsoDate", () => {
   test("zero-pads single-digit month and day", () => {
@@ -67,5 +67,36 @@ describe("getMonthGrid", () => {
     const grid = getMonthGrid(2026, 7);
     expect(grid.days[0]).toBe(1);
     expect(grid.days[grid.days.length - 1]).toBe(31);
+  });
+});
+
+describe("monthFetchWindow", () => {
+  test("pads 6 days before the 1st and 6 days after the last day of the month", () => {
+    // August 2026: 1st is a Saturday, 31st is a Monday.
+    expect(monthFetchWindow(2026, 7)).toEqual({ start: "2026-07-26", end: "2026-09-06" });
+  });
+
+  test("the padded start covers the Monday of the week containing the 1st, for any weekday the 1st falls on", () => {
+    for (let month = 0; month < 12; month++) {
+      const { start } = monthFetchWindow(2026, month);
+      const firstOfMonth = new Date(2026, month, 1);
+      const mondayOfFirstWeek = startOfWeekMonday(firstOfMonth);
+      expect(new Date(start).getTime()).toBeLessThanOrEqual(mondayOfFirstWeek.getTime());
+    }
+  });
+
+  test("the padded end covers the Sunday of the week containing the last day, for any weekday it falls on", () => {
+    for (let month = 0; month < 12; month++) {
+      const { end } = monthFetchWindow(2026, month);
+      const lastOfMonth = new Date(2026, month + 1, 0);
+      const mondayOfLastWeek = startOfWeekMonday(lastOfMonth);
+      const sundayOfLastWeek = new Date(mondayOfLastWeek);
+      sundayOfLastWeek.setDate(sundayOfLastWeek.getDate() + 6);
+      expect(new Date(end).getTime()).toBeGreaterThanOrEqual(sundayOfLastWeek.getTime());
+    }
+  });
+
+  test("rolls correctly across a year boundary", () => {
+    expect(monthFetchWindow(2026, 11)).toEqual({ start: "2026-11-25", end: "2027-01-06" });
   });
 });
