@@ -18,6 +18,19 @@ export interface LookupOption {
   name: string;
 }
 
+/**
+ * A talent's already-committed time window (confirmed package booking or
+ * accepted event application) — from the get_talent_busy_slots() RPC, which
+ * deliberately exposes only date/time across every organizer's bookings for
+ * that talent, not who booked it or for how much, so other organizers can
+ * avoid scheduling a collision without seeing another organizer's booking.
+ */
+export interface BusySlot {
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
 /** A top-level category with its (possibly empty) subcategories — from the self-referencing categories table. */
 export interface CategoryOption extends LookupOption {
   subcategories: LookupOption[];

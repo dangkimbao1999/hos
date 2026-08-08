@@ -10,8 +10,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { addToCart } from "@/lib/supabase/package-actions";
-import type { LookupOption, PackageRow, PackageWithLookupNames } from "@/lib/supabase/types";
+import type { BusySlot, LookupOption, PackageRow, PackageWithLookupNames } from "@/lib/supabase/types";
 import { runAction } from "@/lib/toast-action";
+import { timeRangesOverlap } from "@/lib/time-overlap";
 
 function formatVnd(amount: number) {
   return `${amount.toLocaleString("en-US")} VND`;
@@ -30,10 +31,12 @@ export function BookingPanel({
   talentName,
   packages,
   cities,
+  busySlots,
 }: {
   talentName: string;
   packages: PackageWithLookupNames[];
   cities: LookupOption[];
+  busySlots: BusySlot[];
 }) {
   const router = useRouter();
   const [selectedPackage, setSelectedPackage] = useState(0);
@@ -45,6 +48,8 @@ export function BookingPanel({
   const [bookedEndTime, setBookedEndTime] = useState("");
   const [cityId, setCityId] = useState("");
   const [address, setAddress] = useState("");
+
+  const busySlotsForDate = bookedDate ? busySlots.filter((slot) => slot.date === bookedDate) : [];
 
   const visiblePackages = showAll ? packages : packages.slice(0, 3);
   const hasPackages = packages.length > 0;
@@ -75,6 +80,15 @@ export function BookingPanel({
     }
     if (bookedEndTime <= bookedTime) {
       setError("End time must be after start time.");
+      return;
+    }
+    const conflict = busySlotsForDate.find((slot) =>
+      timeRangesOverlap(bookedTime, bookedEndTime, slot.startTime, slot.endTime)
+    );
+    if (conflict) {
+      setError(
+        `${talentName} is already booked ${conflict.startTime.slice(0, 5)}-${conflict.endTime.slice(0, 5)} on ${bookedDate}.`
+      );
       return;
     }
     if (!cityId) {
@@ -176,6 +190,14 @@ export function BookingPanel({
               {selectedPkg.repeat_on && selectedPkg.repeat_days && selectedPkg.repeat_days.length > 0 && (
                 <p className="text-xs text-muted-foreground">
                   Available on: {selectedPkg.repeat_days.join(", ")}
+                </p>
+              )}
+              {busySlotsForDate.length > 0 && (
+                <p className="text-xs text-destructive">
+                  Already booked on this date: {busySlotsForDate
+                    .map((slot) => `${slot.startTime.slice(0, 5)}-${slot.endTime.slice(0, 5)}`)
+                    .join(", ")}
+                  &mdash; pick a window outside these.
                 </p>
               )}
 

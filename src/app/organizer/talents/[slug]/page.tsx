@@ -5,6 +5,7 @@ import {
   getTalentBySlug,
   listPackagesForTalentWithNames,
   listRelatedPackagesForTalent,
+  listTalentBusySlots,
 } from "@/lib/supabase/packages";
 import { getTalentReviewSummary } from "@/lib/supabase/reviews";
 
@@ -17,10 +18,11 @@ export default async function TalentDetailPage({
   const talent = await getTalentBySlug(slug);
   if (!talent) notFound();
 
-  const [packages, reviewSummary, cities] = await Promise.all([
+  const [packages, reviewSummary, cities, busySlots] = await Promise.all([
     listPackagesForTalentWithNames(talent.id),
     getTalentReviewSummary(talent.id),
     listCities(),
+    listTalentBusySlots(talent.id),
   ]);
   const relatedPackages = await listRelatedPackagesForTalent(
     talent.id,
@@ -36,6 +38,7 @@ export default async function TalentDetailPage({
       relatedPackages={relatedPackages}
       reviewSummary={reviewSummary}
       cities={cities}
+      busySlots={busySlots}
     />
   );
 }

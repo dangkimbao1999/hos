@@ -3,12 +3,31 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   BookingDetail,
   BookingWithNames,
+  BusySlot,
   CartItemWithPackage,
   PackageRow,
   PackageWithLookupNames,
   PackageWithTalent,
   ProfileWithLookupNames,
 } from "@/lib/supabase/types";
+
+/**
+ * Every confirmed engagement on a talent's calendar, regardless of which
+ * organizer booked it — so any organizer browsing this talent can avoid
+ * picking a colliding time. Backed by get_talent_busy_slots(), a
+ * SECURITY DEFINER function that only ever returns date/time (see its
+ * migration for why: RLS on package_bookings/event_applications otherwise
+ * correctly hides other organizers' bookings entirely).
+ */
+export async function listTalentBusySlots(talentId: string): Promise<BusySlot[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_talent_busy_slots", { p_talent_id: talentId });
+  return (data ?? []).map((row: { busy_date: string; start_time: string; end_time: string }) => ({
+    date: row.busy_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+  }));
+}
 
 export async function getTalentBySlug(slug: string): Promise<ProfileWithLookupNames | null> {
   const supabase = await createClient();

@@ -8,9 +8,9 @@ import { BookingPanel } from "@/components/talent-detail/booking-panel";
 import { RatingReviewCard } from "@/components/talent-detail/rating-review-card";
 import { RequestQuoteDialog } from "@/components/talent-detail/request-quote-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 import type { TalentReviewSummary } from "@/lib/supabase/reviews";
 import type {
+  BusySlot,
   LookupOption,
   PackageWithLookupNames,
   PackageWithTalent,
@@ -20,29 +20,29 @@ import type {
 const TABS = ["Overview", "Schedules", "Reviews", "About Talent"] as const;
 type Tab = (typeof TABS)[number];
 
-const mockAvailability = [
-  { date: "12 Aug 2026", slot: "7:00 PM - 9:00 PM", status: "Available" },
-  { date: "19 Aug 2026", slot: "8:00 PM - 10:00 PM", status: "Available" },
-  { date: "26 Aug 2026", slot: "7:00 PM - 9:00 PM", status: "Booked" },
-];
-
 export function TalentDetailContent({
   talent,
   packages,
   relatedPackages,
   reviewSummary,
   cities,
+  busySlots,
 }: {
   talent: ProfileWithLookupNames;
   packages: PackageWithLookupNames[];
   relatedPackages: PackageWithTalent[];
   reviewSummary: TalentReviewSummary;
   cities: LookupOption[];
+  busySlots: BusySlot[];
 }) {
   const [tab, setTab] = useState<Tab>("Overview");
   // Tagline/category have no real schema yet — kept as generic mock flavor
   // text alongside the real name/bio/packages/reviews/media/social data.
   const categoryLabel = [...new Set(packages.map((pkg) => pkg.category_name))].join(", ");
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const upcomingBusySlots = busySlots
+    .filter((slot) => slot.date >= todayIso)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
   const overviewTitle = packages.find((pkg) => pkg.description?.trim())?.description?.trim();
 
   return (
@@ -184,29 +184,32 @@ export function TalentDetailContent({
           {tab === "Schedules" && (
             <div className="flex flex-col gap-3">
               <h2 className="text-xl font-bold tracking-[-0.03em] text-foreground">
-                Upcoming Availability
+                Already Booked
               </h2>
-              {mockAvailability.map((slot) => (
+              <p className="text-sm text-muted-foreground">
+                {talent.full_name}&rsquo;s confirmed engagements — avoid booking a colliding time.
+              </p>
+              {upcomingBusySlots.length === 0 && (
+                <p className="rounded-md bg-white/5 p-4 text-sm text-muted-foreground">
+                  No upcoming bookings on record.
+                </p>
+              )}
+              {upcomingBusySlots.map((slot, i) => (
                 <div
-                  key={slot.date}
+                  key={`${slot.date}-${slot.startTime}-${i}`}
                   className="flex items-center justify-between rounded-md bg-white/5 p-4"
                 >
                   <div className="flex items-center gap-3">
                     <CalendarDays className="size-5 text-muted-foreground" />
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-foreground">{slot.date}</span>
-                      <span className="text-xs text-muted-foreground">{slot.slot}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {slot.startTime.slice(0, 5)} - {slot.endTime.slice(0, 5)}
+                      </span>
                     </div>
                   </div>
-                  <span
-                    className={cn(
-                      "rounded-full px-3 py-1 text-xs font-medium",
-                      slot.status === "Available"
-                        ? "bg-green-500/10 text-green-500"
-                        : "bg-white/10 text-muted-foreground"
-                    )}
-                  >
-                    {slot.status}
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-muted-foreground">
+                    Booked
                   </span>
                 </div>
               ))}
@@ -339,7 +342,7 @@ export function TalentDetailContent({
         </div>
 
         <div className="flex h-fit w-[380px] shrink-0 flex-col gap-4">
-          <BookingPanel talentName={talent.full_name} packages={packages} cities={cities} />
+          <BookingPanel talentName={talent.full_name} packages={packages} cities={cities} busySlots={busySlots} />
           <RequestQuoteDialog talentId={talent.id} talentName={talent.full_name} cities={cities} />
         </div>
       </div>

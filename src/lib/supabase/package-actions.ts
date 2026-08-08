@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertKycVerified } from "@/lib/supabase/kyc";
+import { timeRangesOverlap } from "@/lib/time-overlap";
 
 export async function createPackage(
   formData: FormData
@@ -176,6 +177,25 @@ export async function addToCart(
   // say how long they actually need the talent for.
   if (!bookedEndTime) return { error: "Enter an end time for this booking." };
   if (bookedTime && bookedEndTime <= bookedTime) return { error: "End time must be after start time." };
+
+  // Checked here (not just client-side) so two organizers racing for the
+  // same talent can't both slip a colliding booking through, and so it's
+  // enforced even if the client-side check gets bypassed.
+  if (bookedDate && bookedTime) {
+    const { data: pkg } = await supabase.from("packages").select("talent_id").eq("id", packageId).single();
+    if (pkg) {
+      const { data: busySlots } = await supabase.rpc("get_talent_busy_slots", { p_talent_id: pkg.talent_id });
+      const conflict = (busySlots ?? []).find(
+        (slot: { busy_date: string; start_time: string; end_time: string }) =>
+          slot.busy_date === bookedDate && timeRangesOverlap(bookedTime, bookedEndTime, slot.start_time, slot.end_time)
+      );
+      if (conflict) {
+        return {
+          error: `This talent is already booked ${conflict.start_time.slice(0, 5)}-${conflict.end_time.slice(0, 5)} on ${bookedDate}.`,
+        };
+      }
+    }
+  }
 
   const { error } = await supabase.from("cart_items").insert({
     organizer_id: user.id,

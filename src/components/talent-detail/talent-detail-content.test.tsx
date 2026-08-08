@@ -99,6 +99,7 @@ describe("TalentDetailContent — cover photo", () => {
         relatedPackages={[]}
         reviewSummary={reviewSummary}
         cities={[]}
+        busySlots={[]}
       />
     );
     const img = screen.getByAltText("") as HTMLImageElement;
@@ -115,6 +116,7 @@ describe("TalentDetailContent — Overview tab", () => {
         relatedPackages={[]}
         reviewSummary={reviewSummary}
         cities={[]}
+        busySlots={[]}
       />
     );
     expect(screen.getByText("DJ Sets")).toBeInTheDocument();
@@ -129,6 +131,7 @@ describe("TalentDetailContent — Overview tab", () => {
         relatedPackages={[makeRelatedPackage({ category_name: "Live Band" })]}
         reviewSummary={reviewSummary}
         cities={[]}
+        busySlots={[]}
       />
     );
 
@@ -155,6 +158,7 @@ describe("TalentDetailContent — About Talent tab", () => {
         relatedPackages={[]}
         reviewSummary={reviewSummary}
         cities={[]}
+        busySlots={[]}
       />
     );
     fireEvent.mouseDown(screen.getByRole("tab", { name: "About Talent" }));
@@ -175,6 +179,7 @@ describe("TalentDetailContent — About Talent tab", () => {
         relatedPackages={[]}
         reviewSummary={reviewSummary}
         cities={[]}
+        busySlots={[]}
       />
     );
     fireEvent.mouseDown(screen.getByRole("tab", { name: "About Talent" }));
